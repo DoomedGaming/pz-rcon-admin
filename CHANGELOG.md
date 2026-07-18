@@ -8,6 +8,8 @@ This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-07-18
+
 ### Added
 
 - The player portal map now follows the signed-in survivor when a telemetry update reports new coordinates. The administrator map still preserves its manually panned position.
@@ -40,7 +42,8 @@ This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 - Corrected the GitHub Container Registry workflow's image build platform.
 
-[Unreleased]: https://github.com/DoomedGaming/pz-rcon-admin/compare/v0.3.0...HEAD
+[Unreleased]: https://github.com/DoomedGaming/pz-rcon-admin/compare/v0.4.0...HEAD
+[0.4.0]: https://github.com/DoomedGaming/pz-rcon-admin/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/DoomedGaming/pz-rcon-admin/releases/tag/v0.3.0
 [0.2.0]: https://github.com/DoomedGaming/pz-rcon-admin/releases/tag/v0.2.0
 [0.1.2]: https://github.com/DoomedGaming/pz-rcon-admin/releases/tag/v0.1.2
