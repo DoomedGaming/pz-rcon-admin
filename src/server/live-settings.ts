@@ -94,13 +94,20 @@ export class LiveSettingsService {
   private readonly values = new Map<string, { value: boolean | number; source: LiveSettingState['source'] }>()
 
   constructor(configuredValues: Record<string, string | number | boolean>, overrides: Record<string, LiveSettingOverride> = {}) {
-    for (const definition of liveSettingDefinitions) {
-      const value = deserialize(definition, configuredValues[definition.key])
-      if (value !== undefined) this.values.set(definition.key, { value, source: 'configured' })
-    }
+    this.importConfigured(configuredValues)
     for (const definition of liveSettingDefinitions) {
       const value = deserialize(definition, overrides[definition.key]?.value)
       if (value !== undefined) this.values.set(definition.key, { value, source: 'changed' })
+    }
+  }
+
+  importConfigured(configuredValues: Record<string, string | number | boolean>) {
+    for (const definition of liveSettingDefinitions) {
+      const current = this.values.get(definition.key)
+      if (current && current.source !== 'configured') continue
+      const value = deserialize(definition, configuredValues[definition.key])
+      if (value !== undefined) this.values.set(definition.key, { value, source: 'configured' })
+      else if (current?.source === 'configured') this.values.delete(definition.key)
     }
   }
 

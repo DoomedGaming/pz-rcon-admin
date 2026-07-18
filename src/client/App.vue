@@ -1006,7 +1006,7 @@ onBeforeUnmount(() => {
         </template>
 
         <template v-else-if="page === 'mods'">
-          <div class="section-intro"><div><p class="eyebrow">Read-only source of truth</p><h2>Mods & configuration</h2><p>Imported server values are searchable here. Passwords, tokens, and webhooks are always removed before data reaches the browser.</p></div><span :class="['source-badge', { live: overview.integrations.configFile }]">{{ overview.integrations.configFile ? 'INI CONNECTED' : 'NO CONFIG FILE' }}</span></div>
+          <div class="section-intro"><div><p class="eyebrow">Read-only source of truth</p><h2>Mods & configuration</h2><p>Imported server values are searchable here. Passwords, tokens, and webhooks are always removed before data reaches the browser.</p><p v-if="overview.integrations.configLastError" class="form-error" role="alert">Configuration sync: {{ overview.integrations.configLastError }}</p></div><span :class="['source-badge', { live: overview.integrations.configFile }]">{{ overview.integrations.configSource === 'ftp' ? 'FTP CONFIG' : overview.integrations.configSource === 'local' ? 'LOCAL CONFIG' : 'NO CONFIG FILE' }}</span></div>
           <div class="integration-grid">
             <article class="integration-card"><span class="integration-icon">M</span><div><strong>{{ overview.config.mods.length }} mod IDs</strong><small>Project Zomboid load order</small></div></article>
             <article class="integration-card"><span class="integration-icon">W</span><div><strong>{{ overview.config.workshopItems.length }} Workshop items</strong><small>Steam subscriptions</small></div></article>

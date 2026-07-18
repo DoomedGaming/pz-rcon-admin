@@ -103,6 +103,19 @@ describe('admin live server settings', () => {
     expect(snapshot.settings.find((setting) => setting.key === 'GlobalChat')).toMatchObject({ value: true, source: 'configured' })
   })
 
+  it('refreshes configured fallbacks without replacing live or changed values', async () => {
+    const service = new LiveSettingsService({ MaxPlayers: 10, SaveWorldEveryMinutes: 15 })
+    await service.snapshot(async () => '* MaxPlayers=12')
+    service.commit('SaveWorldEveryMinutes', 30)
+
+    service.importConfigured({ MaxPlayers: 20, SaveWorldEveryMinutes: 45, PingLimit: 400 })
+    const snapshot = await service.snapshot(async () => { throw new Error('RCON unavailable') })
+
+    expect(snapshot.settings.find((setting) => setting.key === 'MaxPlayers')).toMatchObject({ value: 12, source: 'live' })
+    expect(snapshot.settings.find((setting) => setting.key === 'SaveWorldEveryMinutes')).toMatchObject({ value: 30, source: 'changed' })
+    expect(snapshot.settings.find((setting) => setting.key === 'PingLimit')).toMatchObject({ value: 400, source: 'configured' })
+  })
+
   it('classifies rejected server replies as failures', () => {
     expect(() => validateLiveSettingOutput('Unknown option: Nope')).toThrow('rejected')
     expect(validateLiveSettingOutput('Option GlobalChat is now false')).toBe('Option GlobalChat is now false')

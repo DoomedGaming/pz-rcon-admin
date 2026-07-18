@@ -25,9 +25,9 @@ See [CHANGELOG.md](CHANGELOG.md) for release-by-release changes. PZ RCON Admin a
 | Communication | Server-wide announcements | RCON |
 | Server control | Save, reload options, check mod updates, safe save-then-shutdown | RCON |
 | World control | Helicopter, gunshot, player-targeted lightning/hordes, zombie removal | RCON |
-| Configuration | Searchable `servertest.ini` and `SandboxVars.lua`, with secret redaction | Read-only local files |
+| Configuration | Searchable `servertest.ini` and `SandboxVars.lua`, with secret redaction | Auto-refreshed FTP/FTPS files or read-only local overrides |
 | Live settings | Allowlisted access, chat, PvP, safehouse, visibility, faction, voice, anti-grief, and save options with no restart | RCON `changeoption` |
-| Mods | Mod IDs, Workshop IDs, and direct Workshop links | `servertest.ini` |
+| Mods | Mod IDs, Workshop IDs, and direct Workshop links | Auto-refreshed `servertest.ini` |
 | Audit | Timestamped command and action history with secret-bearing commands redacted | Local dashboard store |
 | Provider operations | Configurable link to the operator's hosting panel | Operator configuration |
 
@@ -92,9 +92,11 @@ PZ_TELEMETRY_FTP_PASSWORD=your-provider-ftp-password
 PZ_TELEMETRY_FTP_SECURE=false
 PZ_TELEMETRY_FTP_PATH=Lua/PZRconAdminTelemetry/players.json
 PZ_TELEMETRY_FTP_POLL_SECONDS=60
+PZ_CONFIG_FTP_PATH=Server/servertest.ini
+PZ_SANDBOX_FTP_PATH=Server/servertest_SandboxVars.lua
 ```
 
-Then rebuild or restart the dashboard. Its Overview and Mods & Settings pages report whether FTP is configured, connected, waiting for the first snapshot, or returning an actionable error. FTP and RCON credentials stay on the backend and are never included in the browser API or server telemetry utility.
+Then rebuild or restart the dashboard. It immediately retrieves telemetry, `servertest.ini`, and `SandboxVars.lua`, then checks all three again on `PZ_TELEMETRY_FTP_POLL_SECONDS`. Changed configuration is applied in memory without a dashboard restart, so mod counts and searchable settings do not become stale. Its Overview and Mods & Settings pages report whether FTP is configured, connected, waiting for the first snapshot, or returning an actionable error. FTP and RCON credentials stay on the backend and are never included in the browser API or server telemetry utility.
 
 ### Lockstep versions
 
@@ -265,7 +267,7 @@ PZ_RCON_ADMIN_IMAGE=ghcr.io/doomedgaming/pz-rcon-admin:X.Y.Z \
 docker compose up -d --no-build dashboard
 ```
 
-To include searchable mod and server configuration, mount protected copies read-only. The host paths are not secrets and can be supplied directly in the shell:
+FTP/FTPS installs retrieve searchable mod and server configuration automatically. To override FTP with protected local copies, mount them read-only. The host paths are not secrets and can be supplied directly in the shell:
 
 ```bash
 PZ_CONFIG_HOST_PATH=/absolute/host/path/to/servertest.ini \

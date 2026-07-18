@@ -8,9 +8,12 @@ This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-07-18
+
 ### Added
 
 - Added a public project landing page and complete setup documentation deployed through GitHub Pages.
+- Added automatic FTP/FTPS polling for `servertest.ini` and `SandboxVars.lua`, including live in-memory refresh when server settings or mod lists change.
 
 ### Fixed
 
@@ -50,7 +53,8 @@ This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 - Corrected the GitHub Container Registry workflow's image build platform.
 
-[Unreleased]: https://github.com/DoomedGaming/pz-rcon-admin/compare/v0.4.0...HEAD
+[Unreleased]: https://github.com/DoomedGaming/pz-rcon-admin/compare/v0.5.0...HEAD
+[0.5.0]: https://github.com/DoomedGaming/pz-rcon-admin/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/DoomedGaming/pz-rcon-admin/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/DoomedGaming/pz-rcon-admin/releases/tag/v0.3.0
 [0.2.0]: https://github.com/DoomedGaming/pz-rcon-admin/releases/tag/v0.2.0
