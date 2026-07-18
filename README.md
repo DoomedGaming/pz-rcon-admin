@@ -219,7 +219,7 @@ Open the one-time setup URL printed by `docker compose logs dashboard`, save the
 
 ### GitHub Container Registry
 
-Every push to `main` publishes a multi-platform image for `linux/amd64` and `linux/arm64` to:
+Every push to `main` publishes a `linux/amd64` image to:
 
 ```text
 ghcr.io/doomedgaming/pz-rcon-admin
