@@ -5,7 +5,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    image: pz-rcon-admin:latest
+    image: ${PZ_RCON_ADMIN_IMAGE:-ghcr.io/doomedgaming/pz-rcon-admin:latest}
     restart: unless-stopped
     init: true
     read_only: true

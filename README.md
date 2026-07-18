@@ -92,7 +92,7 @@ Then rebuild or restart the dashboard. Its Overview and Mods & Settings pages re
 
 ### Lockstep versions
 
-The dashboard and telemetry companion intentionally use the same semantic version. This release is `0.1.0` and requires telemetry `0.1.0`. `release.json` records that exact pairing, and `npm run check` verifies the sibling telemetry checkout when both repositories are next to each other. When either component changes, run `npm run release:version -- X.Y.Z` from this repository to update both sibling checkouts, then release both with the same `vX.Y.Z` tag. The unchanged repository receives a metadata-only release if necessary.
+The dashboard and telemetry companion intentionally use the same semantic version. [`release.json`](release.json) records the exact pairing, and `npm run check` verifies the sibling telemetry checkout when both repositories are next to each other. When either component changes, run `npm run release:version -- X.Y.Z` from this repository to update both sibling checkouts, then release both with the same `vX.Y.Z` tag. The unchanged repository receives a metadata-only release if necessary.
 
 ## Player portal
 
@@ -216,6 +216,42 @@ docker compose logs dashboard
 ```
 
 Open the one-time setup URL printed by `docker compose logs dashboard`, save the configuration, then restart with `docker compose restart dashboard`. Open <http://127.0.0.1:8787> for the player portal or <http://127.0.0.1:8787/admin> for administration. The encrypted configuration, its key, player history, and audit entries are retained in the `zomboid-admin-data` volume when the container is replaced or upgraded.
+
+### GitHub Container Registry
+
+Every push to `main` publishes a multi-platform image for `linux/amd64` and `linux/arm64` to:
+
+```text
+ghcr.io/doomedgaming/pz-rcon-admin
+```
+
+The workflow uses GitHub's built-in token, generates an SBOM and provenance attestations, and does not require a repository registry secret. Pull requests build the image without publishing it.
+
+Available tags are:
+
+- `latest` and `main` for the current default branch;
+- `sha-<commit>` for an immutable source revision;
+- `X.Y.Z` and `X.Y` when matching Git tags such as `v0.1.1` are pushed.
+
+The Compose file uses `ghcr.io/doomedgaming/pz-rcon-admin:latest` by default while retaining the local `build` definition. To deploy the registry image without rebuilding:
+
+```bash
+docker compose pull dashboard
+docker compose up -d --no-build dashboard
+```
+
+While the GitHub repository and package are private, authenticate the Docker host once using a GitHub personal access token with `read:packages`. Do not store that token in the application's environment file:
+
+```bash
+printf '%s' "$GHCR_TOKEN" | docker login ghcr.io --username YOUR_GITHUB_USERNAME --password-stdin
+```
+
+Override the image or pin a release without editing Compose:
+
+```bash
+PZ_RCON_ADMIN_IMAGE=ghcr.io/doomedgaming/pz-rcon-admin:0.1.1 \
+docker compose up -d --no-build dashboard
+```
 
 To include searchable mod and server configuration, mount protected copies read-only. The host paths are not secrets and can be supplied directly in the shell:
 
