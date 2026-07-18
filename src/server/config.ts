@@ -3,6 +3,7 @@ import { loadEnvFile } from 'node:process'
 import { readIni, summarizeConfig } from './ini.js'
 import { buildPlayerPortalCommunity, publicHttpUrl, publicText } from './player-portal.js'
 import { applySecureConfig } from './secure-config.js'
+import { assertStartupSecurity } from './startup-security.js'
 
 try {
   const envPath = process.env.DASHBOARD_ENV_FILE || '.env'
@@ -97,10 +98,9 @@ export const appConfig = {
   ].filter((warning): warning is string => Boolean(warning)),
 }
 
-if (!['127.0.0.1', 'localhost', '::1'].includes(appConfig.host) && !appConfig.dashboardPassword) {
-  throw new Error('DASHBOARD_PASSWORD is required when HOST is not loopback')
-}
-
-if (appConfig.playerAuth.enabled && !appConfig.dashboardPassword) {
-  throw new Error('DASHBOARD_PASSWORD or a readable Project Zomboid administrator secret is required when player authentication is enabled')
-}
+assertStartupSecurity({
+  host: appConfig.host,
+  dashboardPassword: appConfig.dashboardPassword,
+  playerAuthEnabled: appConfig.playerAuth.enabled,
+  secureConfigConfigured: appConfig.secureConfig.configured,
+})

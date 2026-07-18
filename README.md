@@ -204,7 +204,7 @@ npm start
 
 The production server serves both the API and built interface from <http://127.0.0.1:8787> by default. The root opens the player portal; administration is at <http://127.0.0.1:8787/admin>.
 
-Keep the loopback binding unless the dashboard is placed behind HTTPS. If `HOST` is changed to a non-loopback address, startup refuses to continue unless `DASHBOARD_PASSWORD` is configured. Use a strong, unique RCON password; RCON grants full server control.
+Keep the loopback binding unless the dashboard is placed behind HTTPS. A new instance may bind to a non-loopback address only to serve its token-protected setup flow. The setup form requires a dashboard password before it writes the encrypted configuration; subsequent network-bound starts fail closed if that password cannot be loaded. Use a strong, unique RCON password; RCON grants full server control.
 
 ## Docker deployment
 
@@ -249,7 +249,7 @@ printf '%s' "$GHCR_TOKEN" | docker login ghcr.io --username YOUR_GITHUB_USERNAME
 Override the image or pin a release without editing Compose:
 
 ```bash
-PZ_RCON_ADMIN_IMAGE=ghcr.io/doomedgaming/pz-rcon-admin:0.1.1 \
+PZ_RCON_ADMIN_IMAGE=ghcr.io/doomedgaming/pz-rcon-admin:X.Y.Z \
 docker compose up -d --no-build dashboard
 ```
 
