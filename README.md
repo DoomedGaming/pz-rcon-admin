@@ -165,7 +165,7 @@ npm install
 npm run dev
 ```
 
-On the first start, the terminal prints a one-time `/setup` URL. Open that URL, enter the token and configuration, then restart `npm run dev`. The token is invalidated as soon as the configuration is saved. Future starts use the encrypted store and do not require an environment file.
+On the first start, the terminal prints a one-time `/setup` URL. Open that URL, enter the token and configuration, and save. The token is invalidated immediately and the dashboard exits cleanly so its process supervisor can restart it with the encrypted values. Docker Compose handles this automatically through `restart: unless-stopped`; when using `npm run dev` directly, run the command again after setup.
 
 The store defaults to `~/.config/pz-rcon-admin/`:
 
@@ -188,6 +188,12 @@ npm run dev
 The importer preserves existing credentials, imports RCON values from a readable `servertest.ini` when necessary, and generates independent session-signing secrets when they were previously using fallbacks. Move or delete the plaintext env file only after the encrypted start has been verified.
 
 Environment variables and `.env.example` remain supported for automated deployments. Explicit process variables override stored values; values absent from the process are filled from the encrypted store.
+
+### Updating configuration
+
+After setup, an Admin can open **Configuration** in the control console to correct RCON, telemetry, server-file, player sign-in, and community settings. Non-secret values are loaded into the form, but stored passwords, tokens, and session keys are represented only by a configured/not-configured marker. Leave a secret field blank to keep it, enter a new value to replace it, or use the explicit remove/rotate control where available.
+
+Saving validates the complete merged configuration, encrypts it atomically, records a value-free audit entry, and exits the dashboard after the response is delivered. A Docker or service-manager restart policy then starts it with the new values, while the browser waits and reconnects. A direct `npm start` or `npm run dev` process has no external supervisor and must be started again manually. Environment variables continue to take precedence and must be changed in the deployment environment rather than through this page.
 
 To preview the full interface without connecting to a live server:
 
@@ -215,7 +221,7 @@ docker compose up -d --build
 docker compose logs dashboard
 ```
 
-Open the one-time setup URL printed by `docker compose logs dashboard`, save the configuration, then restart with `docker compose restart dashboard`. Open <http://127.0.0.1:8787> for the player portal or <http://127.0.0.1:8787/admin> for administration. The encrypted configuration, its key, player history, and audit entries are retained in the `zomboid-admin-data` volume when the container is replaced or upgraded.
+Open the one-time setup URL printed by `docker compose logs dashboard` and save the configuration. The container exits and `restart: unless-stopped` starts it again automatically; the setup page waits for the healthy dashboard and opens `/admin`. The same automatic restart occurs after an Admin saves later changes from **Configuration**. Open <http://127.0.0.1:8787> for the player portal or <http://127.0.0.1:8787/admin> for administration. The encrypted configuration, its key, player history, and audit entries are retained in the `zomboid-admin-data` volume when the container is replaced or upgraded.
 
 ### GitHub Container Registry
 

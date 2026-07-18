@@ -55,6 +55,26 @@ const form = ref({
 const busy = ref(false)
 const saved = ref(false)
 const error = ref('')
+const restartMessage = ref('Waiting for the dashboard service to restart…')
+
+async function waitForRestart() {
+  await new Promise((resolve) => window.setTimeout(resolve, 1_500))
+  for (let attempt = 0; attempt < 40; attempt += 1) {
+    try {
+      const response = await fetch('/api/setup/status', { cache: 'no-store' })
+      const nextStatus = await response.json() as SetupStatus
+      if (response.ok && nextStatus.configured && !nextStatus.restartRequired) {
+        restartMessage.value = 'Dashboard restarted. Opening the admin console…'
+        window.location.assign('/admin')
+        return
+      }
+    } catch {
+      // A connection failure is expected while the container is restarting.
+    }
+    await new Promise((resolve) => window.setTimeout(resolve, 1_500))
+  }
+  restartMessage.value = 'The configuration is saved, but the service did not return automatically. Restart the container or service, then open /admin.'
+}
 
 async function save() {
   error.value = ''
@@ -123,6 +143,7 @@ async function save() {
     form.value.playerFtpPassword = ''
     form.value.telemetryToken = ''
     token.value = ''
+    void waitForRestart()
   } catch (reason) {
     error.value = reason instanceof Error ? reason.message : 'Secure configuration could not be saved'
   } finally {
@@ -141,7 +162,7 @@ async function save() {
 
       <div v-if="saved || status.restartRequired" class="setup-result" role="status">
         <strong>Encrypted configuration saved.</strong>
-        <p>Restart PZ RCON Admin. The one-time token is now invalid and saved values will never be returned to the browser.</p>
+        <p>{{ saved ? restartMessage : 'A restart is already in progress. This page will be available again after the dashboard returns.' }}</p>
       </div>
 
       <div v-else-if="!status.available" class="setup-result">

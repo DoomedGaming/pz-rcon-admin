@@ -15,7 +15,8 @@ import { PzPlayerCredentialVerifier } from './player-auth.js'
 import { buildPlayerMapRoster } from './player-portal.js'
 import { PzRconService } from './rcon.js'
 import { DashboardStore } from './store.js'
-import { buildInitialSecureConfig, saveSecureConfig } from './secure-config.js'
+import { editableSecureConfigState, updateEditableSecureConfig } from './configuration-editor.js'
+import { buildInitialSecureConfig, loadSecureConfig, saveSecureConfig } from './secure-config.js'
 import { normalizePlayerTelemetry, TelemetryFtpBridge } from './telemetry.js'
 
 const app = express()
@@ -32,6 +33,7 @@ const telemetryBridge = new TelemetryFtpBridge(appConfig.telemetryFtp, (snapshot
 })
 let setupToken = appConfig.secureConfig.configured ? '' : randomBytes(24).toString('base64url')
 let setupSaved = false
+let configurationRestartScheduled = false
 const setupRequired = !appConfig.secureConfig.configured && !(
   appConfig.dashboardPassword
   && appConfig.rcon.host
@@ -104,13 +106,34 @@ function setupString(value: unknown, maxLength = 4_096): string {
   return typeof value === 'string' ? value.trim().slice(0, maxLength) : ''
 }
 
+function scheduleConfigurationRestart(response: Response) {
+  if (configurationRestartScheduled) return
+  configurationRestartScheduled = true
+  let armed = false
+  const beginRestart = () => {
+    if (armed) return
+    armed = true
+    const restartTimer = setTimeout(() => {
+      console.log('Secure configuration changed. Exiting so the process supervisor can restart PZ RCON Admin.')
+      clearInterval(pollTimer)
+      if (telemetryPollTimer) clearInterval(telemetryPollTimer)
+      server.close(() => process.exit(0))
+      const forceExitTimer = setTimeout(() => process.exit(0), 5_000)
+      forceExitTimer.unref()
+    }, 750)
+    restartTimer.unref()
+  }
+  response.once('finish', beginRestart)
+  response.once('close', beginRestart)
+}
+
 app.get('/api/setup/status', (_request, response) => {
   response.setHeader('Cache-Control', 'no-store')
   response.json({
     configured: appConfig.secureConfig.configured || setupSaved,
     available: !appConfig.secureConfig.configured && !setupSaved,
     required: setupRequired && !setupSaved,
-    restartRequired: setupSaved,
+    restartRequired: setupSaved || configurationRestartScheduled,
   })
 })
 
@@ -125,7 +148,8 @@ app.post('/api/setup', (request, response) => {
     saveSecureConfig(config, appConfig.secureConfig.directory)
     setupSaved = true
     setupToken = ''
-    response.status(201).json({ saved: true, restartRequired: true })
+    scheduleConfigurationRestart(response)
+    response.status(201).json({ saved: true, restartScheduled: true })
   } catch (error) {
     response.status(400).json({ error: errorMessage(error) })
   }
@@ -472,6 +496,32 @@ app.get('/api/config', requireDashboardRole('admin'), (_request, response) => {
     sandbox: appConfig.sandboxText ? parseSandboxLua(appConfig.sandboxText) : {},
     sources: { ini: Boolean(appConfig.configPath), sandbox: Boolean(appConfig.sandboxPath) },
   })
+})
+
+app.get('/api/admin/configuration', requireDashboardRole('admin'), (_request, response) => {
+  response.setHeader('Cache-Control', 'no-store')
+  try {
+    const current = loadSecureConfig(appConfig.secureConfig.directory)
+    response.json({ ...editableSecureConfigState(current), restartScheduled: configurationRestartScheduled })
+  } catch (error) {
+    response.status(500).json({ error: errorMessage(error) })
+  }
+})
+
+app.put('/api/admin/configuration', requireDashboardRole('admin'), (request, response) => {
+  response.setHeader('Cache-Control', 'no-store')
+  if (configurationRestartScheduled) return response.status(409).json({ error: 'A configuration restart is already scheduled' })
+  try {
+    const current = loadSecureConfig(appConfig.secureConfig.directory)
+    const updated = updateEditableSecureConfig(current, request.body)
+    saveSecureConfig(updated, appConfig.secureConfig.directory)
+    store.addAudit({ category: 'system', action: 'secure-configuration-update', success: true, detail: `${dashboardActor(request)} updated encrypted configuration` })
+    scheduleConfigurationRestart(response)
+    response.json({ saved: true, restartScheduled: true })
+  } catch (error) {
+    store.addAudit({ category: 'system', action: 'secure-configuration-update', success: false, detail: errorMessage(error) })
+    response.status(400).json({ error: errorMessage(error) })
+  }
 })
 
 app.post('/api/commands/:id', requireDashboardRole('admin'), async (request, response) => {

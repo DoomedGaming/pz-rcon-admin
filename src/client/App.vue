@@ -4,11 +4,12 @@ import type { AuditEntry, CommandDefinition, DashboardRole, DashboardSession, Da
 import { activeSupportRequestStatuses, supportRequestCategories } from '@shared/support-requests'
 import { PLAYER_XP_PERKS } from '@shared/perks'
 import { isAdminConsolePath } from '@shared/routes'
+import ConfigurationEditor from './ConfigurationEditor.vue'
 import PlayerPortal from './PlayerPortal.vue'
 import SetupView from './SetupView.vue'
 import ZomboidMap from './ZomboidMap.vue'
 
-type Page = 'overview' | 'players' | 'requests' | 'users' | 'server' | 'world' | 'settings' | 'mods' | 'console' | 'audit'
+type Page = 'overview' | 'players' | 'requests' | 'users' | 'configuration' | 'server' | 'world' | 'settings' | 'mods' | 'console' | 'audit'
 const adminConsoleMode = isAdminConsolePath(window.location.pathname)
 const setupMode = ref(window.location.pathname === '/setup')
 const setupChecking = ref(true)
@@ -20,6 +21,7 @@ const allNavItems: Array<{ id: Page; label: string; icon: string; adminOnly?: bo
   { id: 'players', label: 'Survivors', icon: 'users' },
   { id: 'requests', label: 'Request queue', icon: 'list' },
   { id: 'users', label: 'Dashboard users', icon: 'users', adminOnly: true },
+  { id: 'configuration', label: 'Configuration', icon: 'sliders', adminOnly: true },
   { id: 'server', label: 'Server control', icon: 'server', adminOnly: true },
   { id: 'world', label: 'World director', icon: 'world', adminOnly: true },
   { id: 'settings', label: 'Live settings', icon: 'sliders', adminOnly: true },
@@ -916,6 +918,10 @@ onBeforeUnmount(() => {
               </article>
             </div>
           </article>
+        </template>
+
+        <template v-else-if="page === 'configuration'">
+          <ConfigurationEditor />
         </template>
 
         <template v-else-if="page === 'server'">
