@@ -1,0 +1,182 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="PZ RCON Admin is a self-hosted Project Zomboid administration dashboard, player portal, and optional deep telemetry companion.">
+  <meta name="theme-color" content="#0b0f0c">
+  <meta property="og:title" content="PZ RCON Admin">
+  <meta property="og:description" content="Run your Project Zomboid server from one secure, self-hosted control room.">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://doomedgaming.github.io/pz-rcon-admin/">
+  <title>PZ RCON Admin — Self-hosted Project Zomboid administration</title>
+  <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="assets/styles.css">
+  <script src="assets/site.js" defer></script>
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+  <header class="site-header">
+    <nav class="site-nav shell" aria-label="Primary navigation">
+      <a class="brand" href="./" aria-label="PZ RCON Admin home">
+        <span class="brand-mark">PZ</span>
+        <span class="brand-copy"><strong>RCON Admin</strong><small>Survivor operations</small></span>
+      </a>
+      <button class="menu-button" type="button" aria-expanded="false" aria-controls="site-menu" data-menu-button>Menu</button>
+      <div class="nav-links" id="site-menu" data-menu>
+        <a href="#capabilities">Capabilities</a>
+        <a href="#architecture">How it works</a>
+        <a href="docs/">Documentation</a>
+        <a href="https://github.com/DoomedGaming/pz-rcon-admin/releases/latest">Releases</a>
+        <a class="button small" href="https://github.com/DoomedGaming/pz-rcon-admin">View on GitHub</a>
+      </div>
+    </nav>
+  </header>
+
+  <main id="main">
+    <section class="hero">
+      <div class="shell hero-grid">
+        <div class="hero-copy">
+          <p class="eyebrow">Self-hosted · Build 42 ready</p>
+          <h1>Run the server.<br><span>Not the gauntlet.</span></h1>
+          <p class="hero-lede">A focused Project Zomboid control room for live RCON operations, survivor support, secure configuration, player history, and optional character telemetry—without handing your credentials to someone else’s service.</p>
+          <div class="hero-actions">
+            <a class="button primary" href="docs/#quick-start">Deploy with Docker</a>
+            <a class="button" href="docs/">Read the setup guide</a>
+          </div>
+          <div class="hero-proof" aria-label="Project highlights">
+            <span>Encrypted secrets</span>
+            <span>Private by design</span>
+            <span>Noncommercial license</span>
+          </div>
+        </div>
+
+        <div class="console-wrap" aria-label="Illustration of the administration dashboard">
+          <div class="console">
+            <div class="console-top"><i></i><i></i><i></i><span>pz-rcon-admin / operations</span></div>
+            <div class="console-body">
+              <aside class="console-side" aria-hidden="true">
+                <div class="console-logo">PZ / ADMIN</div>
+                <span class="active">Overview</span>
+                <span>Survivors</span>
+                <span>Requests</span>
+                <span>Settings</span>
+                <span>Audit</span>
+              </aside>
+              <div class="console-main">
+                <div class="console-heading"><strong>Server overview</strong><span class="live-chip">Connected</span></div>
+                <div class="metric-row">
+                  <div class="metric"><small>RCON</small><strong class="good">Online</strong></div>
+                  <div class="metric"><small>Survivors</small><strong>04 / 32</strong></div>
+                  <div class="metric"><small>Telemetry</small><strong class="good">Synced</strong></div>
+                </div>
+                <div class="map-panel">
+                  <span class="map-label">Latest survivor positions · Build 42.19</span>
+                  <i class="pin one"></i><i class="pin two"></i>
+                  <div class="map-card"><strong>Rosewood team</strong>11,956 · 6,806 · z0</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="signal-strip" aria-label="Product summary">
+      <div class="shell signal-grid">
+        <div class="signal"><small>Control channel</small><strong>Live RCON</strong></div>
+        <div class="signal"><small>Credentials</small><strong>AES-256-GCM</strong></div>
+        <div class="signal"><small>Deployment</small><strong>Docker / Node</strong></div>
+        <div class="signal"><small>Current release</small><strong>v0.4.0</strong></div>
+      </div>
+    </section>
+
+    <section class="section" id="capabilities">
+      <div class="shell">
+        <div class="section-heading">
+          <p class="eyebrow">One operational surface</p>
+          <h2>The tools you reach for when the server is alive.</h2>
+          <p>Keep routine administration understandable, auditable, and close to the community it serves.</p>
+        </div>
+        <div class="feature-grid">
+          <article class="feature-card"><span class="feature-number">01 / CONTROL</span><h3>Live administration</h3><p>Poll server status, manage survivors, broadcast announcements, run guarded commands, save, reload options, and shut down safely.</p></article>
+          <article class="feature-card"><span class="feature-number">02 / PEOPLE</span><h3>Survivor records</h3><p>Track observed sessions and playtime, review online state, and help players through a private request center with staff assignment and replies.</p></article>
+          <article class="feature-card"><span class="feature-number">03 / SIGNAL</span><h3>Deep telemetry</h3><p>Add health, kills, skills, traits, position, profession, carried weight, and current vehicle key data through the separate server companion.</p></article>
+          <article class="feature-card"><span class="feature-number">04 / MAP</span><h3>Interactive world map</h3><p>See reported survivor positions on a pinned Build 42.19 map. Player views follow their latest movement while staff can review the wider field.</p></article>
+          <article class="feature-card"><span class="feature-number">05 / ACCESS</span><h3>Player portal</h3><p>Optionally let survivors sign in with their Project Zomboid account, see their private record, choose a theme, and contact server staff.</p></article>
+          <article class="feature-card"><span class="feature-number">06 / TRACE</span><h3>Audited actions</h3><p>Record administrative actions while redacting secret-bearing commands. User, Moderator, and Admin roles keep access intentionally scoped.</p></article>
+        </div>
+      </div>
+    </section>
+
+    <section class="section alt" id="architecture">
+      <div class="shell">
+        <div class="section-heading">
+          <p class="eyebrow">Simple boundaries</p>
+          <h2>Your server stays the source of truth.</h2>
+          <p>PZ RCON Admin coordinates the pieces without pretending vanilla RCON exposes data it does not.</p>
+        </div>
+        <div class="architecture" aria-label="System architecture">
+          <article class="arch-node"><small>Operators and players</small><strong>Web browser</strong><p>The player portal is public-facing. The administration console is session-protected and role-aware.</p></article>
+          <span class="arch-arrow" aria-hidden="true">→</span>
+          <article class="arch-node accent"><small>Your infrastructure</small><strong>PZ RCON Admin</strong><p>Stores encrypted configuration, observed history, support requests, roles, preferences, and audit records.</p></article>
+          <span class="arch-arrow" aria-hidden="true">↔</span>
+          <article class="arch-node"><small>Your game host</small><strong>RCON + files</strong><p>RCON provides live control. Optional FTP or FTPS retrieves telemetry, account data, and read-only configuration files.</p></article>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="install">
+      <div class="shell">
+        <div class="section-heading">
+          <p class="eyebrow">From zero to connected</p>
+          <h2>Start with one container.</h2>
+          <p>No plaintext environment file is required. The first-run screen collects and encrypts the values on the server.</p>
+        </div>
+        <div class="steps">
+          <article class="step"><h3>Run the image</h3><p>Deploy <code>ghcr.io/doomedgaming/pz-rcon-admin:latest</code> with a persistent data volume and your chosen bind address.</p></article>
+          <article class="step"><h3>Open secure setup</h3><p>Use the one-time URL from the container logs, enter RCON credentials, and add optional telemetry or player sign-in.</p></article>
+          <article class="step"><h3>Operate</h3><p>The container restarts with encrypted settings. Open the player portal at <code>/</code> or the control console at <code>/admin</code>.</p></article>
+        </div>
+        <div style="margin-top:40px"><a class="button primary" href="docs/#quick-start">Copy the Compose setup</a></div>
+      </div>
+    </section>
+
+    <section class="section alt" id="security">
+      <div class="shell security-panel">
+        <div>
+          <p class="eyebrow">Credentials stay home</p>
+          <h2>Built to be self-hosted, not data-hungry.</h2>
+        </div>
+        <div class="security-list">
+          <div class="security-item"><b>✓</b><div><strong>Encrypted first-run configuration</strong><p>Passwords, session keys, FTP credentials, and tokens are encrypted with AES-256-GCM and never returned to the browser after saving.</p></div></div>
+          <div class="security-item"><b>✓</b><div><strong>Unprivileged container</strong><p>The published image runs as a non-root user with a read-only filesystem, dropped capabilities, and a persistent data volume.</p></div></div>
+          <div class="security-item"><b>✓</b><div><strong>No telemetry credentials in the mod</strong><p>The Lua companion only writes a local JSON snapshot. It contains no passwords, dashboard URL, or outbound networking code.</p></div></div>
+          <div class="security-item"><b>✓</b><div><strong>Your network policy still matters</strong><p>Use HTTPS for public access, restrict RCON and FTP at the firewall, and prefer FTPS or a private network when your host supports it.</p></div></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="cta">
+      <div class="shell">
+        <div class="cta-card">
+          <h2>Give the apocalypse a control room.</h2>
+          <a class="button" href="docs/">Set up PZ RCON Admin →</a>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <div class="shell footer-grid">
+      <span>© <span data-current-year>2026</span> DoomiestDoom · Project Zomboid and The Indie Stone are not affiliated with this project.</span>
+      <div class="footer-links">
+        <a href="https://github.com/DoomedGaming/pz-rcon-admin">Source</a>
+        <a href="https://github.com/DoomedGaming/pz-rcon-admin/blob/main/LICENSE.md">License</a>
+        <a href="https://github.com/DoomedGaming/pz-rcon-admin-telemetry">Telemetry</a>
+        <a href="docs/">Documentation</a>
+      </div>
+    </div>
+  </footer>
+</body>
+</html>

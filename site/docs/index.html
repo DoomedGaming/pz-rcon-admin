@@ -1,0 +1,410 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Install and configure PZ RCON Admin, telemetry, player sign-in, and a reverse proxy.">
+  <meta name="theme-color" content="#0b0f0c">
+  <title>Documentation — PZ RCON Admin</title>
+  <link rel="icon" href="../assets/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="../assets/styles.css">
+  <script src="../assets/site.js" defer></script>
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to documentation</a>
+  <header class="site-header">
+    <nav class="site-nav shell" aria-label="Primary navigation">
+      <a class="brand" href="../" aria-label="PZ RCON Admin home">
+        <span class="brand-mark">PZ</span>
+        <span class="brand-copy"><strong>RCON Admin</strong><small>Survivor operations</small></span>
+      </a>
+      <button class="menu-button" type="button" aria-expanded="false" aria-controls="site-menu" data-menu-button>Menu</button>
+      <div class="nav-links" id="site-menu" data-menu>
+        <a href="../">Home</a>
+        <a href="./" aria-current="page">Documentation</a>
+        <a href="https://github.com/DoomedGaming/pz-rcon-admin/releases/latest">Releases</a>
+        <a class="button small" href="https://github.com/DoomedGaming/pz-rcon-admin">View on GitHub</a>
+      </div>
+    </nav>
+  </header>
+
+  <main id="main">
+    <header class="page-hero">
+      <div class="shell">
+        <p class="eyebrow">Operator field manual · v0.4.0</p>
+        <h1>Install once.<br><span>Know every part.</span></h1>
+        <p>Deploy the dashboard, complete encrypted first-run setup, connect RCON, and add only the optional integrations your server needs.</p>
+      </div>
+    </header>
+
+    <div class="shell docs-layout">
+      <aside class="docs-sidebar" aria-label="Documentation sections">
+        <input class="docs-search" type="search" placeholder="Filter sections…" aria-label="Filter documentation sections" data-docs-search>
+        <nav class="docs-nav">
+          <span class="docs-nav-label">Start here</span>
+          <a href="#before-you-start" data-docs-link>Before you start</a>
+          <a href="#quick-start" data-docs-link>Docker quick start</a>
+          <a href="#first-run" data-docs-link>First-run setup</a>
+          <a href="#reverse-proxy" data-docs-link>Reverse proxy</a>
+          <span class="docs-nav-label">Integrations</span>
+          <a href="#telemetry" data-docs-link>Deep telemetry</a>
+          <a href="#player-sign-in" data-docs-link>Player sign-in</a>
+          <a href="#config-files" data-docs-link>Server config files</a>
+          <span class="docs-nav-label">Operations</span>
+          <a href="#settings" data-docs-link>Change settings</a>
+          <a href="#updates" data-docs-link>Updates and backups</a>
+          <a href="#troubleshooting" data-docs-link>Troubleshooting</a>
+          <a href="#reference" data-docs-link>Settings reference</a>
+          <a href="#security" data-docs-link>Security checklist</a>
+        </nav>
+      </aside>
+
+      <article class="docs-content">
+        <section id="before-you-start">
+          <p class="eyebrow">01 / Plan</p>
+          <h2>Before you start</h2>
+          <p class="section-intro">The dashboard can run anywhere that can reach your Project Zomboid RCON port. Optional features also need read access to files exposed by your game host.</p>
+
+          <h3>Required</h3>
+          <ul class="checklist">
+            <li>A Docker host or Node.js 22+ machine.</li>
+            <li>Your Project Zomboid server's RCON hostname or IP, RCON port, and RCON password.</li>
+            <li>A persistent directory or Docker volume for encrypted configuration and dashboard data.</li>
+            <li>A strong dashboard administrator password of at least 16 characters.</li>
+          </ul>
+
+          <h3>Optional</h3>
+          <ul>
+            <li>FTP or FTPS credentials for deep telemetry, Project Zomboid account sign-in, or remote server files.</li>
+            <li>The separate <a href="https://github.com/DoomedGaming/pz-rcon-admin-telemetry">PZ RCON Admin Telemetry</a> companion.</li>
+            <li>An HTTPS reverse proxy for access beyond a trusted local network.</li>
+            <li>Read-only mounts for <code class="inline-code">servertest.ini</code> and <code class="inline-code">servertest_SandboxVars.lua</code>.</li>
+          </ul>
+
+          <div class="callout warning"><strong>Do not expose RCON to the public internet.</strong><p>The dashboard needs to reach RCON, but browsers do not. Restrict the RCON port to the game host, dashboard host, or private network.</p></div>
+          <a class="top-link" href="#main">Back to top ↑</a>
+        </section>
+
+        <section id="quick-start">
+          <p class="eyebrow">02 / Deploy</p>
+          <h2>Docker quick start</h2>
+          <p class="section-intro">This Compose file uses the published GHCR image and stores encrypted settings, player history, roles, requests, and audit data in a named volume.</p>
+
+          <div class="code-block">
+            <div class="code-label">compose.yaml</div>
+            <button class="copy-button" type="button" data-copy-target="#compose-example">Copy</button>
+            <pre id="compose-example"><code>name: pz-rcon-admin
+
+services:
+  dashboard:
+    image: ghcr.io/doomedgaming/pz-rcon-admin:latest
+    container_name: pz-rcon-admin
+    restart: unless-stopped
+    init: true
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    ports:
+      - "127.0.0.1:8788:8787"
+    volumes:
+      - pz-rcon-admin-data:/app/data
+    tmpfs:
+      - /tmp:size=16m,mode=1777
+
+volumes:
+  pz-rcon-admin-data:</code></pre>
+          </div>
+
+          <p>The example binds to loopback for a reverse proxy on the same machine. For trusted LAN access, replace <code class="inline-code">127.0.0.1</code> with the dashboard host's LAN address, such as <code class="inline-code">10.10.10.25</code>. Use <code class="inline-code">0.0.0.0</code> only when the host firewall restricts access appropriately.</p>
+
+          <div class="code-block">
+            <div class="code-label">Start and read the one-time setup URL</div>
+            <button class="copy-button" type="button" data-copy-target="#start-example">Copy</button>
+            <pre id="start-example"><code>docker compose pull
+docker compose up -d
+docker compose logs -f dashboard</code></pre>
+          </div>
+
+          <p>Open the one-time <code class="inline-code">/setup?token=…</code> URL printed in the logs. If the container runs on another machine, replace the URL's host with the LAN hostname, IP, or reverse-proxy hostname while preserving the full path and token.</p>
+          <div class="callout"><strong>No environment file is required.</strong><p>The setup page stores secrets in an encrypted server-side configuration. A named volume preserves the ciphertext and its key when the container is recreated.</p></div>
+          <a class="top-link" href="#main">Back to top ↑</a>
+        </section>
+
+        <section id="first-run">
+          <p class="eyebrow">03 / Connect</p>
+          <h2>First-run setup</h2>
+          <p class="section-intro">The setup URL is single-use. Secrets are encrypted when saved and are never returned to the browser afterward.</p>
+
+          <h3>Dashboard security</h3>
+          <table class="field-table">
+            <thead><tr><th>Field</th><th>What to enter</th></tr></thead>
+            <tbody>
+              <tr><td>Administrator password</td><td>A unique password of 16 or more characters. This is the bootstrap and break-glass admin login; it is not the RCON password.</td></tr>
+              <tr><td>Session signing secret</td><td>Leave blank to generate a strong random value, or provide at least 32 random characters.</td></tr>
+              <tr><td>Dashboard is served through HTTPS</td><td>Enable only when users reach the dashboard through an HTTPS reverse proxy. This turns on secure-only session cookies.</td></tr>
+            </tbody>
+          </table>
+
+          <h3>Project Zomboid RCON</h3>
+          <table class="field-table">
+            <thead><tr><th>Field</th><th>What to enter</th></tr></thead>
+            <tbody>
+              <tr><td>RCON host</td><td>The hostname or IP reachable <strong>from inside the container</strong>. Do not use <code>127.0.0.1</code> unless the game server is in the same container.</td></tr>
+              <tr><td>RCON port</td><td>The server's configured RCON port—not the Project Zomboid gameplay port and not the dashboard's web port.</td></tr>
+              <tr><td>RCON password</td><td>The value configured as <code>RCONPassword</code> for the Project Zomboid server.</td></tr>
+            </tbody>
+          </table>
+
+          <h3>Optional sections</h3>
+          <p>Server-file access, player account sign-in, branding, public links, restart schedule, announcement, and provider URL can all be left blank and added later from <strong>Admin → Configuration</strong>.</p>
+
+          <h3>What happens after save</h3>
+          <ol>
+            <li>The dashboard validates the merged configuration.</li>
+            <li>Secrets and non-secret settings are encrypted atomically in the persistent data volume.</li>
+            <li>The process exits intentionally.</li>
+            <li>Docker's <code>restart: unless-stopped</code> policy starts it with the saved configuration.</li>
+            <li>The setup page reconnects and opens <code>/admin</code>.</li>
+          </ol>
+          <div class="callout"><strong>Where the data lives</strong><p>The container stores the encrypted configuration under <code>/app/data/secure-config</code> and dashboard state at <code>/app/data/dashboard.json</code>. Both live in the volume from the Compose example.</p></div>
+          <a class="top-link" href="#main">Back to top ↑</a>
+        </section>
+
+        <section id="reverse-proxy">
+          <p class="eyebrow">04 / Publish safely</p>
+          <h2>Reverse proxy</h2>
+          <p class="section-intro">Keep the container bound to loopback when the reverse proxy runs on the same host. Terminate HTTPS at the proxy and forward normal HTTP to port 8788.</p>
+
+          <h3>Caddy</h3>
+          <div class="code-block">
+            <div class="code-label">Caddyfile</div>
+            <button class="copy-button" type="button" data-copy-target="#caddy-example">Copy</button>
+            <pre id="caddy-example"><code>pz-admin.example.com {
+  reverse_proxy 127.0.0.1:8788
+}</code></pre>
+          </div>
+
+          <h3>Nginx</h3>
+          <div class="code-block">
+            <div class="code-label">Server block</div>
+            <button class="copy-button" type="button" data-copy-target="#nginx-example">Copy</button>
+            <pre id="nginx-example"><code>server {
+  listen 443 ssl;
+  server_name pz-admin.example.com;
+
+  location / {
+    proxy_pass http://127.0.0.1:8788;
+    proxy_http_version 1.1;
+    proxy_set_header Host $host;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto $scheme;
+  }
+}</code></pre>
+          </div>
+
+          <div class="callout warning"><strong>Turn on secure cookies after HTTPS works.</strong><p>Open <strong>Admin → Configuration</strong>, enable <strong>Dashboard is served through HTTPS</strong>, and save. The container restarts automatically. Enabling it before HTTPS is available prevents browsers from sending the login cookie over HTTP.</p></div>
+          <a class="top-link" href="#main">Back to top ↑</a>
+        </section>
+
+        <section id="telemetry">
+          <p class="eyebrow">05 / Optional signal</p>
+          <h2>Deep telemetry</h2>
+          <p class="section-intro">Vanilla RCON does not expose character health, skills, traits, position, kills, profession, carried weight, or vehicle key IDs. Install one telemetry package to add that data.</p>
+
+          <div class="choice-grid">
+            <article class="choice"><small>Option A</small><h3>Steam Workshop</h3><p>Add Workshop item <a href="https://steamcommunity.com/sharedfiles/filedetails/?id=3767189432">3767189432</a> and Mod ID <code>PZRconAdminTelemetry</code> to the server, then restart.</p></article>
+            <article class="choice"><small>Option B</small><h3>Direct install</h3><p>Download the Lua asset from the <a href="https://github.com/DoomedGaming/pz-rcon-admin-telemetry/releases/latest">latest telemetry release</a> and upload it to <code>media/lua/server/PZRconAdminTelemetry_Server.lua</code>.</p></article>
+          </div>
+
+          <div class="callout danger"><strong>Install only one variant.</strong><p>Do not enable the Workshop mod while the direct-install Lua file is present. Game updates or “Verify game files” may remove the direct-install file, so check it after either operation.</p></div>
+
+          <h3>Connect the dashboard</h3>
+          <p>In first-run setup or <strong>Admin → Configuration</strong>, enter the FTP or FTPS credentials supplied by the game host:</p>
+          <table class="field-table">
+            <thead><tr><th>Field</th><th>Default / meaning</th></tr></thead>
+            <tbody>
+              <tr><td>FTP/FTPS host, port, username, password</td><td>The file-service credentials from the hosting provider. These are unrelated to RCON.</td></tr>
+              <tr><td>Transport</td><td>Plain FTP, explicit FTPS, or implicit FTPS according to the provider.</td></tr>
+              <tr><td>Telemetry file path</td><td><code>Lua/PZRconAdminTelemetry/players.json</code></td></tr>
+              <tr><td>Poll interval</td><td>60 seconds by default; configurable down to 15 seconds.</td></tr>
+              <tr><td>Telemetry HTTP token</td><td>Leave blank unless a custom sender will post authenticated snapshots to the HTTP receiver.</td></tr>
+            </tbody>
+          </table>
+          <p>The Lua exporter writes at most once per real minute during steady activity, with extra event-driven writes at startup and when the online-player count changes. Lowering the dashboard FTP poll interval checks more often but does not make the exporter generate movement snapshots faster.</p>
+          <a class="top-link" href="#main">Back to top ↑</a>
+        </section>
+
+        <section id="player-sign-in">
+          <p class="eyebrow">06 / Optional access</p>
+          <h2>Player account sign-in</h2>
+          <p class="section-intro">When enabled, survivors can use their personal Project Zomboid username and password to open their private player portal. This is not the shared server password.</p>
+          <ol>
+            <li>Enable <strong>Player account sign-in</strong>.</li>
+            <li>Leave the separate FTP fields blank to reuse telemetry credentials, or enter a dedicated read-only file account.</li>
+            <li>Keep the account database path at <code class="inline-code">db/servertest.db</code> unless the provider exposes a different remote root.</li>
+            <li>Keep the world name at <code class="inline-code">servertest</code> unless the server uses a different world/database name.</li>
+            <li>Leave the player session secret blank to generate it, or provide a distinct 32+ character random value.</li>
+          </ol>
+          <p>The backend downloads the account database into a private temporary directory, verifies the Build 42 password representation, and immediately removes the copy. The database and password hashes are never returned to the browser or written to dashboard history.</p>
+          <div class="callout warning"><strong>Plain FTP is not encrypted.</strong><p>If the provider offers only FTP, account database hashes cross that connection without transport encryption. Keep the connection on a trusted/private network or leave player sign-in disabled unless you accept that risk.</p></div>
+          <a class="top-link" href="#main">Back to top ↑</a>
+        </section>
+
+        <section id="config-files">
+          <p class="eyebrow">07 / Optional context</p>
+          <h2>Server config files</h2>
+          <p class="section-intro">The <code>servertest.ini</code> and <code>SandboxVars.lua</code> paths are optional, read-only inputs. They let the dashboard summarize configured server values, maps, mods, and sandbox settings.</p>
+          <p>Docker cannot read arbitrary host files unless they are mounted into the container. Add read-only mounts and enter the <strong>container paths</strong> in setup:</p>
+          <div class="code-block">
+            <div class="code-label">Additional Compose volume mounts</div>
+            <button class="copy-button" type="button" data-copy-target="#mount-example">Copy</button>
+            <pre id="mount-example"><code>services:
+  dashboard:
+    volumes:
+      - pz-rcon-admin-data:/app/data
+      - /host/path/servertest.ini:/config/servertest.ini:ro
+      - /host/path/servertest_SandboxVars.lua:/config/servertest_SandboxVars.lua:ro</code></pre>
+          </div>
+          <table class="field-table">
+            <thead><tr><th>Setup field</th><th>Container path</th></tr></thead>
+            <tbody>
+              <tr><td>servertest.ini path</td><td><code>/config/servertest.ini</code></td></tr>
+              <tr><td>SandboxVars.lua path</td><td><code>/config/servertest_SandboxVars.lua</code></td></tr>
+            </tbody>
+          </table>
+          <p>These files are not required for RCON controls, telemetry, or player sign-in. The dashboard does not write changes back to them.</p>
+          <a class="top-link" href="#main">Back to top ↑</a>
+        </section>
+
+        <section id="settings">
+          <p class="eyebrow">08 / Reconfigure</p>
+          <h2>Change settings later</h2>
+          <p class="section-intro">Admins can open <strong>Configuration</strong> in the control console to correct RCON, telemetry, file access, player sign-in, and community settings.</p>
+          <ul>
+            <li>Non-secret values load into the form.</li>
+            <li>Stored secrets appear only as configured/not-configured indicators.</li>
+            <li>Leave a secret field blank to keep it.</li>
+            <li>Enter a new value to replace it, or use an explicit remove/rotate control where offered.</li>
+            <li>Saving exits the process after the encrypted write; Docker restarts it automatically.</li>
+          </ul>
+          <div class="callout"><strong>Environment overrides win.</strong><p>If a setting is supplied to the container as an environment variable, change it in the deployment configuration. The in-app form cannot override the running process environment.</p></div>
+          <a class="top-link" href="#main">Back to top ↑</a>
+        </section>
+
+        <section id="updates">
+          <p class="eyebrow">09 / Maintain</p>
+          <h2>Updates and backups</h2>
+          <h3>Update the dashboard</h3>
+          <div class="code-block">
+            <div class="code-label">Pull the latest image</div>
+            <button class="copy-button" type="button" data-copy-target="#update-example">Copy</button>
+            <pre id="update-example"><code>docker compose pull dashboard
+docker compose up -d --no-build dashboard
+docker compose logs --tail=100 dashboard</code></pre>
+          </div>
+          <p>For predictable rollouts, replace <code>latest</code> in Compose with a release such as <code class="inline-code">0.4.0</code>. The tags <code>X.Y.Z</code> and <code>X.Y</code> are published for each release.</p>
+
+          <h3>Back up persistent data</h3>
+          <p>Back up the named volume before major changes. It contains both the encrypted configuration and the encryption key, plus player history, roles, support requests, preferences, and audit records. A backup of only one secure-config file is not sufficient.</p>
+
+          <h3>Update telemetry</h3>
+          <p>The admin app and telemetry companion use matching release versions. Update the Workshop item normally, or replace the direct-install Lua file with the asset from the matching telemetry release. Restart the Project Zomboid server after changing the telemetry package.</p>
+          <a class="top-link" href="#main">Back to top ↑</a>
+        </section>
+
+        <section id="troubleshooting">
+          <p class="eyebrow">10 / Recover</p>
+          <h2>Troubleshooting</h2>
+          <h3>Container is unhealthy</h3>
+          <div class="code-block">
+            <div class="code-label">Inspect health and logs</div>
+            <button class="copy-button" type="button" data-copy-target="#health-example">Copy</button>
+            <pre id="health-example"><code>docker compose ps
+docker compose logs --tail=200 dashboard
+curl -i http://127.0.0.1:8788/api/health</code></pre>
+          </div>
+          <p>During first-run setup, use the current image and keep the persistent volume writable at <code>/app/data</code>. If setup saved successfully but the service did not return, confirm <code>restart: unless-stopped</code> is present and restart the service once.</p>
+
+          <h3>RCON will not connect</h3>
+          <ul>
+            <li>Confirm the RCON host is reachable from inside the container.</li>
+            <li>Confirm the port is the RCON port, not the gameplay port.</li>
+            <li>Verify the server's RCON password and firewall rules.</li>
+            <li>Remember that <code>localhost</code> inside the container refers to the container itself.</li>
+          </ul>
+
+          <h3>Telemetry shows no players</h3>
+          <ul>
+            <li>Install exactly one telemetry variant and restart the game server.</li>
+            <li>Join the server and verify <code>Lua/PZRconAdminTelemetry/players.json</code> exists and is updating.</li>
+            <li>Confirm the FTP remote path uses forward slashes and the provider's remote root.</li>
+            <li>Check the Mods &amp; Settings integration status for the most recent FTP error.</li>
+            <li>After a game update or file verification, confirm the direct-install Lua file still exists.</li>
+          </ul>
+
+          <h3>Login loops behind HTTPS</h3>
+          <p>Confirm the proxy sends <code>X-Forwarded-Proto: https</code>, the public URL is really HTTPS, and secure cookies are enabled. Clear stale cookies after changing between HTTP and HTTPS.</p>
+          <a class="top-link" href="#main">Back to top ↑</a>
+        </section>
+
+        <section id="reference">
+          <p class="eyebrow">11 / Reference</p>
+          <h2>Settings reference</h2>
+          <p class="section-intro">Most operators should use the encrypted setup and Configuration screens. Environment variables remain available for automation and override encrypted values.</p>
+          <table class="field-table">
+            <thead><tr><th>Setting</th><th>Default</th><th>Purpose</th></tr></thead>
+            <tbody>
+              <tr><td><code>DASHBOARD_PASSWORD</code></td><td>Required for automation</td><td>Bootstrap administrator password.</td></tr>
+              <tr><td><code>DASHBOARD_SESSION_SECRET</code></td><td>Generated in setup</td><td>Signs administrator sessions; use 32+ random characters.</td></tr>
+              <tr><td><code>DASHBOARD_SECURE_COOKIE</code></td><td><code>false</code></td><td>Set true only when the public dashboard is HTTPS.</td></tr>
+              <tr><td><code>PZ_RCON_HOST</code></td><td>Required</td><td>Game server host reachable from the dashboard.</td></tr>
+              <tr><td><code>PZ_RCON_PORT</code></td><td>Required</td><td>Project Zomboid RCON port.</td></tr>
+              <tr><td><code>PZ_RCON_PASSWORD</code></td><td>Required</td><td>Project Zomboid RCON password.</td></tr>
+              <tr><td><code>PZ_RCON_POLL_SECONDS</code></td><td><code>15</code></td><td>RCON player/status polling; minimum 5 seconds.</td></tr>
+              <tr><td><code>PZ_TELEMETRY_FTP_PATH</code></td><td><code>Lua/PZRconAdminTelemetry/players.json</code></td><td>Remote telemetry snapshot path.</td></tr>
+              <tr><td><code>PZ_TELEMETRY_FTP_POLL_SECONDS</code></td><td><code>60</code></td><td>Dashboard telemetry retrieval; minimum 15 seconds.</td></tr>
+              <tr><td><code>PZ_PLAYER_AUTH_ENABLED</code></td><td><code>false</code></td><td>Enables Project Zomboid account sign-in.</td></tr>
+              <tr><td><code>PZ_PLAYER_DB_FTP_PATH</code></td><td><code>db/servertest.db</code></td><td>Remote account database path.</td></tr>
+              <tr><td><code>PZ_CONFIG_PATH</code></td><td>Empty</td><td>Optional container path to read-only <code>servertest.ini</code>.</td></tr>
+              <tr><td><code>PZ_SANDBOX_PATH</code></td><td>Empty</td><td>Optional container path to read-only SandboxVars Lua.</td></tr>
+            </tbody>
+          </table>
+          <p>See the repository's <a href="https://github.com/DoomedGaming/pz-rcon-admin/blob/main/.env.example">complete environment example</a> for branding, player links, provider details, separate database FTP credentials, and advanced automation fields.</p>
+          <a class="top-link" href="#main">Back to top ↑</a>
+        </section>
+
+        <section id="security">
+          <p class="eyebrow">12 / Harden</p>
+          <h2>Security checklist</h2>
+          <ul class="checklist">
+            <li>Use unique dashboard, RCON, FTP, and session secrets.</li>
+            <li>Keep RCON and file-service ports off the public internet.</li>
+            <li>Use HTTPS and secure cookies for any access outside a trusted LAN.</li>
+            <li>Prefer FTPS or a private network; plain FTP exposes traffic in transit.</li>
+            <li>Keep the persistent data volume readable only by the container host administrator.</li>
+            <li>Back up the entire volume because the encrypted store and master key are both required.</li>
+            <li>Promote Project Zomboid accounts to Moderator or Admin explicitly; every account begins as User.</li>
+            <li>Review the audit log and update to current matching admin/telemetry releases.</li>
+          </ul>
+          <p>PZ RCON Admin is distributed under the <a href="https://github.com/DoomedGaming/pz-rcon-admin/blob/main/LICENSE.md">PolyForm Noncommercial License 1.0.0</a>. It is source-available for noncommercial use and is not OSI-approved open source because commercial use is restricted.</p>
+          <a class="top-link" href="#main">Back to top ↑</a>
+        </section>
+      </article>
+    </div>
+  </main>
+
+  <footer class="site-footer">
+    <div class="shell footer-grid">
+      <span>Documentation for PZ RCON Admin v0.4.0 · Updated with the project.</span>
+      <div class="footer-links">
+        <a href="../">Home</a>
+        <a href="https://github.com/DoomedGaming/pz-rcon-admin/issues">Report an issue</a>
+        <a href="https://github.com/DoomedGaming/pz-rcon-admin-telemetry">Telemetry repository</a>
+      </div>
+    </div>
+  </footer>
+</body>
+</html>

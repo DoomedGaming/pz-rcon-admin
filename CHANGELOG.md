@@ -8,6 +8,14 @@ This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added
+
+- Added a public project landing page and complete setup documentation deployed through GitHub Pages.
+
+### Fixed
+
+- Corrected the Docker environment example to use the renamed `PZRconAdminTelemetry` snapshot path and describe both supported telemetry installation variants.
+
 ## [0.4.0] - 2026-07-18
 
 ### Added

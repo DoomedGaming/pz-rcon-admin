@@ -30,6 +30,7 @@ const packageJson = readJson(packagePath)
 const packageLock = readJson(packageLockPath)
 const appRelease = readJson(appReleasePath)
 const telemetryRelease = readJson(telemetryReleasePath)
+const previousVersion = packageJson.version
 
 packageJson.version = version
 packageLock.version = version
@@ -51,5 +52,11 @@ const workshopInfo = readFileSync(workshopInfoPath, 'utf8').replace(/Release \d+
 
 writeFileSync(modInfoPath, modInfo)
 writeFileSync(workshopInfoPath, workshopInfo)
+
+for (const sitePath of [resolve(appRoot, 'site/index.html'), resolve(appRoot, 'site/docs/index.html')]) {
+  if (!existsSync(sitePath)) continue
+  const site = readFileSync(sitePath, 'utf8').split(previousVersion).join(version)
+  writeFileSync(sitePath, site)
+}
 
 console.log(`Updated both repositories and the Workshop package to ${version}.`)
