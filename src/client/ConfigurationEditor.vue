@@ -35,6 +35,8 @@ const form = ref({
   telemetrySecure: 'false',
   telemetryPath: 'Lua/PZRconAdminTelemetry/players.json',
   telemetryPollSeconds: '60',
+  configFtpPath: 'Server/servertest.ini',
+  sandboxFtpPath: 'Server/servertest_SandboxVars.lua',
   playerAuthEnabled: false,
   playerSessionSecret: '',
   playerFtpHost: '',
@@ -97,6 +99,8 @@ function hydrate(state: ConfigurationState) {
   form.value.telemetrySecure = value(values, 'PZ_TELEMETRY_FTP_SECURE', 'false')
   form.value.telemetryPath = value(values, 'PZ_TELEMETRY_FTP_PATH', 'Lua/PZRconAdminTelemetry/players.json')
   form.value.telemetryPollSeconds = value(values, 'PZ_TELEMETRY_FTP_POLL_SECONDS', '60')
+  form.value.configFtpPath = value(values, 'PZ_CONFIG_FTP_PATH', 'Server/servertest.ini')
+  form.value.sandboxFtpPath = value(values, 'PZ_SANDBOX_FTP_PATH', 'Server/servertest_SandboxVars.lua')
   form.value.playerAuthEnabled = value(values, 'PZ_PLAYER_AUTH_ENABLED') === 'true'
   form.value.playerFtpHost = value(values, 'PZ_PLAYER_DB_FTP_HOST')
   form.value.playerFtpPort = value(values, 'PZ_PLAYER_DB_FTP_PORT')
@@ -182,6 +186,8 @@ async function save() {
     PZ_TELEMETRY_FTP_SECURE: form.value.telemetrySecure,
     PZ_TELEMETRY_FTP_PATH: form.value.telemetryPath,
     PZ_TELEMETRY_FTP_POLL_SECONDS: form.value.telemetryPollSeconds,
+    PZ_CONFIG_FTP_PATH: form.value.configFtpPath,
+    PZ_SANDBOX_FTP_PATH: form.value.sandboxFtpPath,
     PZ_PLAYER_AUTH_ENABLED: String(form.value.playerAuthEnabled),
     PZ_PLAYER_DB_FTP_HOST: form.value.playerFtpHost,
     PZ_PLAYER_DB_FTP_PORT: form.value.playerFtpPort,
@@ -268,8 +274,8 @@ onMounted(() => void load())
         <label>RCON host<input v-model="form.rconHost" autocomplete="off" required /></label>
         <label>RCON port<input v-model="form.rconPort" type="number" min="1" max="65535" required /></label>
         <label class="wide">New RCON password <small>{{ configuredHint('PZ_RCON_PASSWORD') }}</small><input v-model="form.rconPassword" type="password" autocomplete="new-password" :required="!secretsConfigured.PZ_RCON_PASSWORD" /></label>
-        <label>servertest.ini path <small>Optional container path.</small><input v-model="form.configPath" autocomplete="off" /></label>
-        <label>SandboxVars.lua path <small>Optional container path.</small><input v-model="form.sandboxPath" autocomplete="off" /></label>
+        <label>Local servertest.ini path <small>Optional container path; overrides FTP.</small><input v-model="form.configPath" autocomplete="off" /></label>
+        <label>Local SandboxVars.lua path <small>Optional container path; overrides FTP.</small><input v-model="form.sandboxPath" autocomplete="off" /></label>
       </fieldset>
 
       <fieldset>
@@ -282,6 +288,8 @@ onMounted(() => void load())
         <label>Transport<select v-model="form.telemetrySecure"><option value="false">Plain FTP</option><option value="true">Explicit FTPS</option><option value="implicit">Implicit FTPS</option></select></label>
         <label>Telemetry file path<input v-model="form.telemetryPath" autocomplete="off" /></label>
         <label>Poll interval (seconds)<input v-model="form.telemetryPollSeconds" type="number" min="15" /></label>
+        <label>Server INI FTP path <small>Refreshed automatically.</small><input v-model="form.configFtpPath" autocomplete="off" /></label>
+        <label>SandboxVars FTP path <small>Refreshed automatically.</small><input v-model="form.sandboxFtpPath" autocomplete="off" /></label>
         <label class="wide">New telemetry HTTP token <small>{{ configuredHint('PZ_TELEMETRY_TOKEN') }}</small><input v-model="form.telemetryToken" type="password" autocomplete="new-password" :disabled="clearSecrets.includes('PZ_TELEMETRY_TOKEN')" /></label>
         <label class="check wide"><input v-model="clearSecrets" type="checkbox" value="PZ_TELEMETRY_TOKEN" /> Remove stored HTTP token</label>
         <label class="check wide"><input v-model="form.playerAuthEnabled" type="checkbox" /> Enable player account sign-in</label>

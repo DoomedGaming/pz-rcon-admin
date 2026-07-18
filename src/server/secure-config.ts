@@ -24,6 +24,8 @@ export const SECURE_CONFIG_KEYS = [
   'PZ_TELEMETRY_FTP_SECURE',
   'PZ_TELEMETRY_FTP_PATH',
   'PZ_TELEMETRY_FTP_POLL_SECONDS',
+  'PZ_CONFIG_FTP_PATH',
+  'PZ_SANDBOX_FTP_PATH',
   'PZ_PLAYER_AUTH_ENABLED',
   'PZ_PLAYER_SESSION_SECRET',
   'PZ_PLAYER_DB_FTP_HOST',
@@ -128,12 +130,15 @@ export function buildInitialSecureConfig(value: unknown): SecureConfig {
     config.PZ_PLAYER_DB_WORLD ||= 'servertest'
   }
   if (config.PZ_TELEMETRY_FTP_HOST) {
+    const world = config.PZ_PLAYER_DB_WORLD || 'servertest'
     config.PZ_TELEMETRY_FTP_PORT ||= '21'
     config.PZ_TELEMETRY_FTP_SECURE = ['true', 'implicit'].includes(config.PZ_TELEMETRY_FTP_SECURE ?? '')
       ? config.PZ_TELEMETRY_FTP_SECURE
       : 'false'
     config.PZ_TELEMETRY_FTP_PATH ||= 'Lua/PZRconAdminTelemetry/players.json'
     config.PZ_TELEMETRY_FTP_POLL_SECONDS ||= '60'
+    config.PZ_CONFIG_FTP_PATH ||= `Server/${world}.ini`
+    config.PZ_SANDBOX_FTP_PATH ||= `Server/${world}_SandboxVars.lua`
   }
   return config
 }

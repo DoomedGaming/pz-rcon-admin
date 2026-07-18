@@ -31,7 +31,7 @@
   <main id="main">
     <header class="page-hero">
       <div class="shell">
-        <p class="eyebrow">Operator field manual · v0.4.0</p>
+        <p class="eyebrow">Operator field manual · v0.5.0</p>
         <h1>Install once.<br><span>Know every part.</span></h1>
         <p>Deploy the dashboard, complete encrypted first-run setup, connect RCON, and add only the optional integrations your server needs.</p>
       </div>
@@ -78,7 +78,7 @@
             <li>FTP or FTPS credentials for deep telemetry, Project Zomboid account sign-in, or remote server files.</li>
             <li>The separate <a href="https://steamcommunity.com/sharedfiles/filedetails/?id=3767189432">PZ RCON Admin Telemetry</a> companion on Steam Workshop.</li>
             <li>An HTTPS reverse proxy for access beyond a trusted local network.</li>
-            <li>Read-only mounts for <code class="inline-code">servertest.ini</code> and <code class="inline-code">servertest_SandboxVars.lua</code>.</li>
+            <li>Optional read-only local mounts for <code class="inline-code">servertest.ini</code> and <code class="inline-code">servertest_SandboxVars.lua</code> when FTP is unavailable.</li>
           </ul>
 
           <div class="callout warning"><strong>Do not expose RCON to the public internet.</strong><p>The dashboard needs to reach RCON, but browsers do not. Restrict the RCON port to the game host, dashboard host, or private network.</p></div>
@@ -229,7 +229,9 @@ docker compose logs -f dashboard</code></pre>
               <tr><td>FTP/FTPS host, port, username, password</td><td>The file-service credentials from the hosting provider. These are unrelated to RCON.</td></tr>
               <tr><td>Transport</td><td>Plain FTP, explicit FTPS, or implicit FTPS according to the provider.</td></tr>
               <tr><td>Telemetry file path</td><td><code>Lua/PZRconAdminTelemetry/players.json</code></td></tr>
-              <tr><td>Poll interval</td><td>60 seconds by default; configurable down to 15 seconds.</td></tr>
+              <tr><td>Server INI FTP path</td><td><code>Server/servertest.ini</code></td></tr>
+              <tr><td>SandboxVars FTP path</td><td><code>Server/servertest_SandboxVars.lua</code></td></tr>
+              <tr><td>Poll interval</td><td>60 seconds by default; telemetry and both configuration files refresh on this interval, configurable down to 15 seconds.</td></tr>
               <tr><td>Telemetry HTTP token</td><td>Leave blank unless a custom sender will post authenticated snapshots to the HTTP receiver.</td></tr>
             </tbody>
           </table>
@@ -256,8 +258,9 @@ docker compose logs -f dashboard</code></pre>
         <section id="config-files">
           <p class="eyebrow">07 / Optional context</p>
           <h2>Server config files</h2>
-          <p class="section-intro">The <code>servertest.ini</code> and <code>SandboxVars.lua</code> paths are optional, read-only inputs. They let the dashboard summarize configured server values, maps, mods, and sandbox settings.</p>
-          <p>Docker cannot read arbitrary host files unless they are mounted into the container. Add read-only mounts and enter the <strong>container paths</strong> in setup:</p>
+          <p class="section-intro">The dashboard automatically retrieves <code>servertest.ini</code> and <code>SandboxVars.lua</code> through the configured FTP or FTPS account. It checks them at startup and on every FTP poll, updating maps, mods, and searchable settings without a dashboard restart.</p>
+          <p>G-Portal exposes the defaults as <code>Server/servertest.ini</code> and <code>Server/servertest_SandboxVars.lua</code>. Change the remote paths in setup only when a provider uses a different FTP root or world name.</p>
+          <p>If FTP is unavailable, Docker can instead use protected local copies. Add read-only mounts and enter the <strong>container paths</strong> in setup; local files override FTP retrieval:</p>
           <div class="code-block">
             <div class="code-label">Additional Compose volume mounts</div>
             <button class="copy-button" type="button" data-copy-target="#mount-example">Copy</button>
@@ -275,7 +278,7 @@ docker compose logs -f dashboard</code></pre>
               <tr><td>SandboxVars.lua path</td><td><code>/config/servertest_SandboxVars.lua</code></td></tr>
             </tbody>
           </table>
-          <p>These files are not required for RCON controls, telemetry, or player sign-in. The dashboard does not write changes back to them.</p>
+          <p>Both FTP and local sources are read-only. These files are not required for RCON controls, telemetry, or player sign-in, and the dashboard never writes changes back to them.</p>
           <a class="top-link" href="#main">Back to top ↑</a>
         </section>
 
@@ -305,7 +308,7 @@ docker compose logs -f dashboard</code></pre>
 docker compose up -d --no-build dashboard
 docker compose logs --tail=100 dashboard</code></pre>
           </div>
-          <p>For predictable rollouts, replace <code>latest</code> in Compose with a release such as <code class="inline-code">0.4.0</code>. The tags <code>X.Y.Z</code> and <code>X.Y</code> are published for each release.</p>
+          <p>For predictable rollouts, replace <code>latest</code> in Compose with a release such as <code class="inline-code">0.5.0</code>. The tags <code>X.Y.Z</code> and <code>X.Y</code> are published for each release.</p>
 
           <h3>Back up persistent data</h3>
           <p>Back up the named volume before major changes. It contains both the encrypted configuration and the encryption key, plus player history, roles, support requests, preferences, and audit records. A backup of only one secure-config file is not sufficient.</p>
@@ -366,6 +369,8 @@ curl -i http://127.0.0.1:8788/api/health</code></pre>
               <tr><td><code>PZ_RCON_POLL_SECONDS</code></td><td><code>15</code></td><td>RCON player/status polling; minimum 5 seconds.</td></tr>
               <tr><td><code>PZ_TELEMETRY_FTP_PATH</code></td><td><code>Lua/PZRconAdminTelemetry/players.json</code></td><td>Remote telemetry snapshot path.</td></tr>
               <tr><td><code>PZ_TELEMETRY_FTP_POLL_SECONDS</code></td><td><code>60</code></td><td>Dashboard telemetry retrieval; minimum 15 seconds.</td></tr>
+              <tr><td><code>PZ_CONFIG_FTP_PATH</code></td><td><code>Server/servertest.ini</code></td><td>Remote server INI path, refreshed on the FTP polling interval.</td></tr>
+              <tr><td><code>PZ_SANDBOX_FTP_PATH</code></td><td><code>Server/servertest_SandboxVars.lua</code></td><td>Remote SandboxVars path, refreshed on the FTP polling interval.</td></tr>
               <tr><td><code>PZ_PLAYER_AUTH_ENABLED</code></td><td><code>false</code></td><td>Enables Project Zomboid account sign-in.</td></tr>
               <tr><td><code>PZ_PLAYER_DB_FTP_PATH</code></td><td><code>db/servertest.db</code></td><td>Remote account database path.</td></tr>
               <tr><td><code>PZ_CONFIG_PATH</code></td><td>Empty</td><td>Optional container path to read-only <code>servertest.ini</code>.</td></tr>
@@ -398,7 +403,7 @@ curl -i http://127.0.0.1:8788/api/health</code></pre>
 
   <footer class="site-footer">
     <div class="shell footer-grid">
-      <span>Documentation for PZ RCON Admin v0.4.0 · Updated with the project.</span>
+      <span>Documentation for PZ RCON Admin v0.5.0 · Updated with the project.</span>
       <div class="footer-links">
         <a href="../">Home</a>
         <a href="https://github.com/DoomedGaming/pz-rcon-admin/issues">Report an issue</a>

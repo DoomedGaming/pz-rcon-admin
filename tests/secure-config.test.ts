@@ -57,4 +57,19 @@ describe('encrypted secure configuration', () => {
     expect(config.PZ_PLAYER_SESSION_SECRET).toHaveLength(43)
     expect(config.PZ_PLAYER_SESSION_SECRET).not.toBe(config.DASHBOARD_SESSION_SECRET)
   })
+
+  it('adds default remote server configuration paths when FTP is configured', () => {
+    const config = buildInitialSecureConfig({
+      DASHBOARD_PASSWORD: 'a-long-dashboard-password',
+      PZ_RCON_HOST: '127.0.0.1',
+      PZ_RCON_PORT: 27015,
+      PZ_RCON_PASSWORD: 'a-rcon-password',
+      PZ_TELEMETRY_FTP_HOST: 'ftp.example.test',
+      PZ_TELEMETRY_FTP_USER: 'operator',
+      PZ_TELEMETRY_FTP_PASSWORD: 'secret',
+    })
+
+    expect(config.PZ_CONFIG_FTP_PATH).toBe('Server/servertest.ini')
+    expect(config.PZ_SANDBOX_FTP_PATH).toBe('Server/servertest_SandboxVars.lua')
+  })
 })

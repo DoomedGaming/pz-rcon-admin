@@ -8,16 +8,17 @@ import { isValidWorldMapTile, worldMapUpstreamTileUrl } from '../shared/world-ma
 import { createAuth, createPlayerAuth } from './auth.js'
 import { appConfig } from './config.js'
 import { buildDefinedCommand, buildPlayerCommand, commandDefinitions, validatePlayerActionOutput, validateRawCommand, type PlayerAction } from './commands.js'
-import { parseSandboxLua } from './ini.js'
+import { parseSandboxLua, summarizeConfig } from './ini.js'
 import { LiveSettingsService, validateLiveSettingOutput } from './live-settings.js'
 import { isPlayerTheme } from '../shared/player-settings.js'
 import { PzPlayerCredentialVerifier } from './player-auth.js'
-import { buildPlayerMapRoster } from './player-portal.js'
+import { buildPlayerMapRoster, buildPlayerPortalCommunity } from './player-portal.js'
 import { PzRconService } from './rcon.js'
 import { DashboardStore } from './store.js'
 import { editableSecureConfigState, updateEditableSecureConfig } from './configuration-editor.js'
 import { buildInitialSecureConfig, loadSecureConfig, saveSecureConfig } from './secure-config.js'
 import { normalizePlayerTelemetry, TelemetryFtpBridge } from './telemetry.js'
+import { ServerConfigFtpBridge } from './server-config-ftp.js'
 
 const app = express()
 const store = new DashboardStore(appConfig.dataPath)
@@ -30,6 +31,15 @@ const loginAttempts = new Map<string, { count: number; resetAt: number }>()
 const playerLoginAttempts = new Map<string, { count: number; resetAt: number }>()
 const telemetryBridge = new TelemetryFtpBridge(appConfig.telemetryFtp, (snapshot, observedAt) => {
   store.updateTelemetryBatch(snapshot.players, observedAt)
+})
+const serverConfigBridge = new ServerConfigFtpBridge(appConfig.serverConfigFtp, (update) => {
+  if (update.configValues) {
+    const summary = summarizeConfig(update.configValues)
+    Object.assign(appConfig.configSummary, summary)
+    appConfig.playerPortal = buildPlayerPortalCommunity(process.env, summary.name)
+    liveSettings.importConfigured(summary.values)
+  }
+  if (update.sandboxText !== undefined) appConfig.sandboxText = update.sandboxText
 })
 let setupToken = appConfig.secureConfig.configured ? '' : randomBytes(24).toString('base64url')
 let setupSaved = false
@@ -116,7 +126,7 @@ function scheduleConfigurationRestart(response: Response) {
     const restartTimer = setTimeout(() => {
       console.log('Secure configuration changed. Exiting so the process supervisor can restart PZ RCON Admin.')
       clearInterval(pollTimer)
-      if (telemetryPollTimer) clearInterval(telemetryPollTimer)
+      if (ftpPollTimer) clearInterval(ftpPollTimer)
       server.close(() => process.exit(0))
       const forceExitTimer = setTimeout(() => process.exit(0), 5_000)
       forceExitTimer.unref()
@@ -422,6 +432,7 @@ app.get('/api/overview', (_request, response) => {
   const players = store.getPlayers()
   const summary = appConfig.configSummary
   const telemetryState = telemetryBridge.getState()
+  const serverConfigState = serverConfigBridge.getState()
   const overview: Overview = {
     connection: rcon.getState(),
     server: {
@@ -439,8 +450,11 @@ app.get('/api/overview', (_request, response) => {
     config: summary,
     community: appConfig.playerPortal,
     integrations: {
-      configFile: Boolean(appConfig.configPath),
-      sandboxFile: Boolean(appConfig.sandboxPath),
+      configFile: Boolean(appConfig.configPath || serverConfigState.configLoaded),
+      sandboxFile: Boolean(appConfig.sandboxPath || serverConfigState.sandboxLoaded),
+      configSource: appConfig.configPath ? 'local' : serverConfigState.configLoaded ? 'ftp' : 'none',
+      configLastSyncAt: serverConfigState.lastSyncAt,
+      configLastError: serverConfigState.lastError,
       telemetry: Boolean(appConfig.telemetryToken || telemetryState.configured),
       telemetrySource: telemetryState.configured ? 'ftp' : appConfig.telemetryToken ? 'http' : 'none',
       telemetryConnected: telemetryState.connected,
@@ -491,10 +505,17 @@ app.post('/api/requests/:id/messages', (request, response) => {
 })
 app.get('/api/commands', requireDashboardRole('admin'), (_request, response) => response.json(commandDefinitions))
 app.get('/api/config', requireDashboardRole('admin'), (_request, response) => {
+  const serverConfigState = serverConfigBridge.getState()
   response.json({
     summary: appConfig.configSummary,
     sandbox: appConfig.sandboxText ? parseSandboxLua(appConfig.sandboxText) : {},
-    sources: { ini: Boolean(appConfig.configPath), sandbox: Boolean(appConfig.sandboxPath) },
+    sources: {
+      ini: Boolean(appConfig.configPath || serverConfigState.configLoaded),
+      sandbox: Boolean(appConfig.sandboxPath || serverConfigState.sandboxLoaded),
+      source: appConfig.configPath ? 'local' : serverConfigState.configLoaded ? 'ftp' : 'none',
+      lastSyncAt: serverConfigState.lastSyncAt,
+      lastError: serverConfigState.lastError,
+    },
   })
 })
 
@@ -680,16 +701,21 @@ void poll()
 const pollTimer = setInterval(() => void poll(), appConfig.rcon.pollSeconds * 1000)
 pollTimer.unref()
 
-if (telemetryBridge.getState().configured) void telemetryBridge.poll()
-const telemetryPollTimer = telemetryBridge.getState().configured
-  ? setInterval(() => void telemetryBridge.poll(), appConfig.telemetryFtp.pollSeconds * 1000)
+const ftpConfigured = telemetryBridge.getState().configured || serverConfigBridge.getState().configured
+async function pollFtpFiles() {
+  if (telemetryBridge.getState().configured) await telemetryBridge.poll()
+  if (serverConfigBridge.getState().configured) await serverConfigBridge.poll()
+}
+if (ftpConfigured) void pollFtpFiles()
+const ftpPollTimer = ftpConfigured
+  ? setInterval(() => void pollFtpFiles(), appConfig.telemetryFtp.pollSeconds * 1000)
   : undefined
-telemetryPollTimer?.unref()
+ftpPollTimer?.unref()
 
 for (const signal of ['SIGINT', 'SIGTERM'] as const) {
   process.on(signal, () => {
     clearInterval(pollTimer)
-    if (telemetryPollTimer) clearInterval(telemetryPollTimer)
+    if (ftpPollTimer) clearInterval(ftpPollTimer)
     server.close(() => process.exit(0))
   })
 }

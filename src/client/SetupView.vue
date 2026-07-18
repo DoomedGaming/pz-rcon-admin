@@ -29,6 +29,8 @@ const form = ref({
   telemetrySecure: 'false',
   telemetryPath: 'Lua/PZRconAdminTelemetry/players.json',
   telemetryPollSeconds: '60',
+  configFtpPath: 'Server/servertest.ini',
+  sandboxFtpPath: 'Server/servertest_SandboxVars.lua',
   playerAuthEnabled: false,
   playerSessionSecret: '',
   playerFtpHost: '',
@@ -106,6 +108,8 @@ async function save() {
           PZ_TELEMETRY_FTP_SECURE: form.value.telemetrySecure,
           PZ_TELEMETRY_FTP_PATH: form.value.telemetryPath,
           PZ_TELEMETRY_FTP_POLL_SECONDS: form.value.telemetryPollSeconds,
+          PZ_CONFIG_FTP_PATH: form.value.configFtpPath,
+          PZ_SANDBOX_FTP_PATH: form.value.sandboxFtpPath,
           PZ_PLAYER_AUTH_ENABLED: String(form.value.playerAuthEnabled),
           PZ_PLAYER_SESSION_SECRET: form.value.playerSessionSecret,
           PZ_PLAYER_DB_FTP_HOST: form.value.playerFtpHost,
@@ -191,8 +195,8 @@ async function save() {
           <label>RCON host<input v-model="form.rconHost" autocomplete="off" required placeholder="server.example.com" /></label>
           <label>RCON port<input v-model="form.rconPort" type="number" min="1" max="65535" required /></label>
           <label class="wide">RCON password<input v-model="form.rconPassword" type="password" autocomplete="new-password" required /></label>
-          <label>servertest.ini path <small>Optional read-only import.</small><input v-model="form.configPath" autocomplete="off" /></label>
-          <label>SandboxVars.lua path <small>Optional read-only import.</small><input v-model="form.sandboxPath" autocomplete="off" /></label>
+          <label>Local servertest.ini path <small>Optional container path; overrides FTP.</small><input v-model="form.configPath" autocomplete="off" /></label>
+          <label>Local SandboxVars.lua path <small>Optional container path; overrides FTP.</small><input v-model="form.sandboxPath" autocomplete="off" /></label>
         </fieldset>
 
         <fieldset>
@@ -204,6 +208,8 @@ async function save() {
           <label>Transport<select v-model="form.telemetrySecure"><option value="false">Plain FTP</option><option value="true">Explicit FTPS</option><option value="implicit">Implicit FTPS</option></select></label>
           <label>Telemetry file path<input v-model="form.telemetryPath" autocomplete="off" /></label>
           <label>Poll interval (seconds)<input v-model="form.telemetryPollSeconds" type="number" min="15" /></label>
+          <label>Server INI FTP path <small>Refreshed automatically.</small><input v-model="form.configFtpPath" autocomplete="off" /></label>
+          <label>SandboxVars FTP path <small>Refreshed automatically.</small><input v-model="form.sandboxFtpPath" autocomplete="off" /></label>
           <label class="wide">Telemetry HTTP token <small>Optional secret for custom authenticated senders.</small><input v-model="form.telemetryToken" type="password" autocomplete="new-password" /></label>
           <label class="check"><input v-model="form.playerAuthEnabled" type="checkbox" /> Enable player account sign-in</label>
           <template v-if="form.playerAuthEnabled">

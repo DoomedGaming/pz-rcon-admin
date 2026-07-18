@@ -191,6 +191,9 @@ export interface Overview {
   integrations: {
     configFile: boolean
     sandboxFile: boolean
+    configSource: 'none' | 'local' | 'ftp'
+    configLastSyncAt?: string
+    configLastError?: string
     telemetry: boolean
     telemetrySource: 'none' | 'http' | 'ftp'
     telemetryConnected: boolean
