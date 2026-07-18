@@ -4,6 +4,10 @@ A reusable, self-hosted administration dashboard and player portal for Project Z
 
 Canonical repository: <https://github.com/DoomedGaming/pz-rcon-admin>
 
+## Changelog
+
+See [CHANGELOG.md](CHANGELOG.md) for release-by-release changes. PZ RCON Admin and its telemetry companion keep matching version numbers, so both changelogs use the same release version when either component changes.
+
 ## What it can administer
 
 | Area | Available now | Data source |

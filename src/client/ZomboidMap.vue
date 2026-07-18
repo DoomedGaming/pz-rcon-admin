@@ -14,8 +14,10 @@ import {
 const props = withDefaults(defineProps<{
   players: PlayerMapRecord[]
   audience: 'player' | 'admin'
+  followUsername?: string
 }>(), {
   players: () => [],
+  followUsername: '',
 })
 
 interface PlayerMarker {
@@ -54,6 +56,9 @@ const heading = computed(() => props.audience === 'admin' ? 'Survivor locations'
 const subtitle = computed(() => props.audience === 'admin'
   ? 'All survivors with a reported position. Offline markers show their last known location.'
   : 'Your latest location plus currently online survivors with a reported position.')
+const followedUsername = computed(() => props.audience === 'player'
+  ? props.followUsername.trim().toLocaleLowerCase('en-US')
+  : '')
 
 function relativeTime(value?: string): string {
   if (!value) return 'Unknown time'
@@ -217,6 +222,12 @@ function focusMarker(username: string) {
   viewer.viewport.applyConstraints()
 }
 
+function markerMoved(nextMarker: PlayerMarker | undefined, previousMarker: PlayerMarker | undefined): boolean {
+  if (!nextMarker || !previousMarker) return false
+  return nextMarker.position.x !== previousMarker.position.x
+    || nextMarker.position.y !== previousMarker.position.y
+}
+
 function zoom(factor: number) {
   if (!viewer?.isOpen()) return
   viewer.viewport.zoomBy(factor)
@@ -236,8 +247,18 @@ watch(markers, async (nextMarkers, previousMarkers) => {
   if (!viewer) initializeMap()
   else syncOverlays()
 
-  // Do not interrupt an administrator who is panning when telemetry refreshes.
-  if (!previousMarkers?.length) fitMarkers(true)
+  if (!previousMarkers?.length) {
+    fitMarkers(true)
+    return
+  }
+
+  // Follow the signed-in survivor on their player page without interrupting an
+  // administrator who is reviewing or panning across several locations.
+  if (followedUsername.value) {
+    const nextFollowed = nextMarkers.find((marker) => marker.username.toLocaleLowerCase('en-US') === followedUsername.value)
+    const previousFollowed = previousMarkers.find((marker) => marker.username.toLocaleLowerCase('en-US') === followedUsername.value)
+    if (nextFollowed && markerMoved(nextFollowed, previousFollowed)) focusMarker(nextFollowed.username)
+  }
 }, { deep: true, immediate: true })
 
 onBeforeUnmount(destroyViewer)
