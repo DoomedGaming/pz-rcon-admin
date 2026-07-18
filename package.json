@@ -1,0 +1,40 @@
+{
+  "name": "pz-rcon-admin",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "concurrently -k -n API,WEB -c red,green \"npm:dev:server\" \"npm:dev:web\"",
+    "dev:private": "npm run dev",
+    "dev:server": "tsx watch src/server/index.ts",
+    "dev:web": "vite",
+    "config:import": "tsx src/server/import-secure-config.ts",
+    "build": "npm run typecheck && vite build && npm run build:server",
+    "build:server": "tsc -p tsconfig.server.build.json",
+    "start": "NODE_ENV=production node dist/server-node/server/index.js",
+    "start:private": "npm start",
+    "typecheck": "vue-tsc --noEmit && tsc -p tsconfig.server.json --noEmit",
+    "test": "vitest run --dir tests",
+    "check": "npm run typecheck && npm test && npm run build"
+  },
+  "dependencies": {
+    "basic-ftp": "^5.3.1",
+    "bcryptjs": "^3.0.3",
+    "express": "^5.1.0",
+    "openseadragon": "^6.0.2",
+    "rcon-client": "^4.2.5",
+    "vue": "^3.5.17"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.3",
+    "@types/node": "^24.0.14",
+    "@vitejs/plugin-vue": "^6.0.0",
+    "@vue/tsconfig": "^0.7.0",
+    "concurrently": "^9.2.0",
+    "tsx": "^4.20.3",
+    "typescript": "^5.8.3",
+    "vite": "^7.0.5",
+    "vitest": "^3.2.4",
+    "vue-tsc": "^2.2.12"
+  }
+}

@@ -1,0 +1,11 @@
+node_modules/
+.vite/
+dist/
+.env
+.env.local
+.env.docker
+data/*.json
+data/*.tmp
+coverage/
+*.log
+.DS_Store

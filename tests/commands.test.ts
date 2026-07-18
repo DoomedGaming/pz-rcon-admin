@@ -1,0 +1,63 @@
+import { describe, expect, it } from 'vitest'
+import { buildDefinedCommand, buildPlayerCommand, validatePlayerActionOutput, validateRawCommand } from '../src/server/commands.js'
+
+describe('command builders', () => {
+  it('quotes announcement text and removes newline injection', () => {
+    const result = buildDefinedCommand('announce', { message: 'Restart soon\nsave' })
+    expect(result.command).toBe('servermsg "Restart soon save"')
+  })
+
+  it('uses the current Build 42 player ability commands', () => {
+    expect(buildPlayerCommand('Alice', 'godmode')).toBe('godmodeplayer "Alice" -true')
+    expect(buildPlayerCommand('Alice', 'godmode', { enabled: false })).toBe('godmodeplayer "Alice" -false')
+    expect(buildPlayerCommand('Alice', 'addxp', { perk: 'Woodwork', amount: 100 })).toBe('addxp "Alice" Woodwork=100 -true')
+  })
+
+  it('builds coordinate and player teleport commands', () => {
+    expect(buildPlayerCommand('Alice', 'teleport-coordinates', { x: 10_632, y: 9_761, z: 0 }))
+      .toBe('teleportto "Alice" 10632,9761,0')
+    expect(buildPlayerCommand('Alice', 'teleport-player', { destination: 'Bob' }))
+      .toBe('teleport "Alice" "Bob"')
+  })
+
+  it('rejects unsafe teleport destinations', () => {
+    expect(() => buildPlayerCommand('Alice', 'teleport-coordinates', { x: 'west', y: 100, z: 0 }))
+      .toThrow('X coordinate must be a whole number')
+    expect(() => buildPlayerCommand('Alice', 'teleport-coordinates', { x: 100, y: -1, z: 0 }))
+      .toThrow('Y coordinate must be a whole number')
+    expect(() => buildPlayerCommand('Alice', 'teleport-player', { destination: 'alice' }))
+      .toThrow('Choose a different destination survivor')
+  })
+
+  it('maps the Electrical skill label to Project Zomboid\'s Electricity perk ID', () => {
+    expect(buildPlayerCommand('Alice', 'addxp', { perk: 'Electrical', amount: 100 })).toBe('addxp "Alice" Electricity=100 -true')
+    expect(buildPlayerCommand('Alice', 'addxp', { perk: 'electrical', amount: 100 })).toBe('addxp "Alice" Electricity=100 -true')
+  })
+
+  it('rejects unknown XP skills and non-numeric XP amounts', () => {
+    expect(() => buildPlayerCommand('Alice', 'addxp', { perk: 'UnknownSkill', amount: 100 })).toThrow()
+    expect(() => buildPlayerCommand('Alice', 'addxp', { perk: 'Electricity', amount: 'lots' })).toThrow()
+  })
+
+  it('accepts only numeric per-vehicle key IDs', () => {
+    expect(buildPlayerCommand('Alice', 'key', { keyId: 42_918, name: 'Pickup key' }))
+      .toBe('addkey "Alice" "42918" "Pickup key"')
+    expect(() => buildPlayerCommand('Alice', 'key', { keyId: 'Base.CarKey' }))
+      .toThrow('Vehicle key ID must be a whole number')
+  })
+
+  it('classifies known Project Zomboid XP rejection replies as failures', () => {
+    expect(() => validatePlayerActionOutput('addxp', 'List of available perks :\nFitness\nElectricity')).toThrow()
+    expect(() => validatePlayerActionOutput('addxp', 'No such user')).toThrow()
+    expect(validatePlayerActionOutput('addxp', "Added 100 Electricity xp's to Alice")).toBe("Added 100 Electricity xp's to Alice")
+  })
+
+  it('classifies unavailable server commands as failures', () => {
+    expect(() => validatePlayerActionOutput('teleport-coordinates', 'Unknown command teleportto'))
+      .toThrow('server build does not expose that RCON command')
+  })
+
+  it('rejects empty raw commands', () => {
+    expect(() => validateRawCommand('  ')).toThrow('Command is required')
+  })
+})

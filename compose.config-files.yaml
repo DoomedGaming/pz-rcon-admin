@@ -1,0 +1,16 @@
+# Optional overlay that imports the real Project Zomboid configuration files.
+# Set the two non-secret host paths in the shell or a Compose override before use.
+services:
+  dashboard:
+    environment:
+      PZ_CONFIG_PATH: /config/servertest.ini
+      PZ_SANDBOX_PATH: /config/servertest_SandboxVars.lua
+    volumes:
+      - type: bind
+        source: "${PZ_CONFIG_HOST_PATH:?Set PZ_CONFIG_HOST_PATH in .env.docker}"
+        target: /config/servertest.ini
+        read_only: true
+      - type: bind
+        source: "${PZ_SANDBOX_HOST_PATH:?Set PZ_SANDBOX_HOST_PATH in .env.docker}"
+        target: /config/servertest_SandboxVars.lua
+        read_only: true
