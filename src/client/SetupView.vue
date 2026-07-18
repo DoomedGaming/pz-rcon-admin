@@ -27,7 +27,7 @@ const form = ref({
   telemetryUser: '',
   telemetryPassword: '',
   telemetrySecure: 'false',
-  telemetryPath: 'Lua/DoomedTelemetry/players.json',
+  telemetryPath: 'Lua/PZRconAdminTelemetry/players.json',
   telemetryPollSeconds: '60',
   playerAuthEnabled: false,
   playerSessionSecret: '',

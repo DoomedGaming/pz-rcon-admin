@@ -72,7 +72,7 @@ describe('Project Zomboid deep telemetry', () => {
       access,
       close,
       downloadTo: vi.fn(async (destination: Writable, remotePath: string) => {
-        expect(remotePath).toBe('Lua/DoomedTelemetry/players.json')
+        expect(remotePath).toBe('Lua/PZRconAdminTelemetry/players.json')
         await new Promise<void>((resolve, reject) => destination.end(snapshot, (error?: Error | null) => error ? reject(error) : resolve()))
       }),
     }
@@ -82,7 +82,7 @@ describe('Project Zomboid deep telemetry', () => {
       user: 'telemetry',
       password: 'secret',
       secure: false,
-      remotePath: 'Lua/DoomedTelemetry/players.json',
+      remotePath: 'Lua/PZRconAdminTelemetry/players.json',
       pollSeconds: 60,
     }, imported, () => client)
 
@@ -100,7 +100,7 @@ describe('Project Zomboid deep telemetry', () => {
       user: 'telemetry',
       password: 'do-not-leak',
       secure: false,
-      remotePath: 'Lua/DoomedTelemetry/players.json',
+      remotePath: 'Lua/PZRconAdminTelemetry/players.json',
       pollSeconds: 60,
     }, vi.fn(), () => ({
       ftp: { verbose: true },

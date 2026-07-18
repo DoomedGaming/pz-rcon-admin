@@ -4,6 +4,7 @@ import type { AuditEntry, CommandDefinition, DashboardRole, DashboardSession, Da
 import { activeSupportRequestStatuses, supportRequestCategories } from '@shared/support-requests'
 import { PLAYER_XP_PERKS } from '@shared/perks'
 import { isAdminConsolePath } from '@shared/routes'
+import { activityChartScale } from './activity-chart'
 import ConfigurationEditor from './ConfigurationEditor.vue'
 import PlayerPortal from './PlayerPortal.vue'
 import SetupView from './SetupView.vue'
@@ -524,13 +525,16 @@ const filteredSettings = computed(() => {
     .filter(([key, value]) => !query || `${key} ${value}`.toLowerCase().includes(query))
     .sort(([left], [right]) => left.localeCompare(right))
 })
+const chartMaximum = computed(() => activityChartScale(
+  overview.value?.server.maxPlayers ?? 0,
+  overview.value?.activity.slice(-48).map((point) => point.online) ?? [],
+))
 const chartPoints = computed(() => {
   const points = overview.value?.activity.slice(-48) ?? []
-  if (!points.length) return '0,92 600,92'
-  const max = Math.max(overview.value?.server.maxPlayers ?? 1, ...points.map((point) => point.online), 1)
+  if (!points.length) return '0,100 600,100'
   return points.map((point, index) => {
     const x = points.length === 1 ? 600 : index * (600 / (points.length - 1))
-    const y = 100 - (point.online / max) * 82
+    const y = 100 - (point.online / chartMaximum.value) * 82
     return `${x.toFixed(1)},${y.toFixed(1)}`
   }).join(' ')
 })
@@ -695,7 +699,7 @@ onBeforeUnmount(() => {
                 <span class="panel-stat">Peak {{ Math.max(0, ...overview.activity.slice(-48).map((point) => point.online)) }}</span>
               </div>
               <div class="chart-wrap">
-                <div class="chart-y"><span>{{ overview.server.maxPlayers }}</span><span>{{ Math.round(overview.server.maxPlayers / 2) }}</span><span>0</span></div>
+                <div class="chart-y"><span>{{ chartMaximum }}</span><span>{{ chartMaximum / 2 }}</span><span>0</span></div>
                 <svg viewBox="0 0 600 110" preserveAspectRatio="none" aria-label="Online player activity chart">
                   <defs><linearGradient id="area" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#a7b46a" stop-opacity=".35"/><stop offset="100%" stop-color="#a7b46a" stop-opacity="0"/></linearGradient></defs>
                   <line x1="0" y1="18" x2="600" y2="18" /><line x1="0" y1="59" x2="600" y2="59" /><line x1="0" y1="100" x2="600" y2="100" />

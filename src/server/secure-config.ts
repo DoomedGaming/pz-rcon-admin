@@ -132,7 +132,7 @@ export function buildInitialSecureConfig(value: unknown): SecureConfig {
     config.PZ_TELEMETRY_FTP_SECURE = ['true', 'implicit'].includes(config.PZ_TELEMETRY_FTP_SECURE ?? '')
       ? config.PZ_TELEMETRY_FTP_SECURE
       : 'false'
-    config.PZ_TELEMETRY_FTP_PATH ||= 'Lua/DoomedTelemetry/players.json'
+    config.PZ_TELEMETRY_FTP_PATH ||= 'Lua/PZRconAdminTelemetry/players.json'
     config.PZ_TELEMETRY_FTP_POLL_SECONDS ||= '60'
   }
   return config

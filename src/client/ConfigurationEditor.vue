@@ -33,7 +33,7 @@ const form = ref({
   telemetryUser: '',
   telemetryPassword: '',
   telemetrySecure: 'false',
-  telemetryPath: 'Lua/DoomedTelemetry/players.json',
+  telemetryPath: 'Lua/PZRconAdminTelemetry/players.json',
   telemetryPollSeconds: '60',
   playerAuthEnabled: false,
   playerSessionSecret: '',
@@ -95,7 +95,7 @@ function hydrate(state: ConfigurationState) {
   form.value.telemetryPort = value(values, 'PZ_TELEMETRY_FTP_PORT', '21')
   form.value.telemetryUser = value(values, 'PZ_TELEMETRY_FTP_USER')
   form.value.telemetrySecure = value(values, 'PZ_TELEMETRY_FTP_SECURE', 'false')
-  form.value.telemetryPath = value(values, 'PZ_TELEMETRY_FTP_PATH', 'Lua/DoomedTelemetry/players.json')
+  form.value.telemetryPath = value(values, 'PZ_TELEMETRY_FTP_PATH', 'Lua/PZRconAdminTelemetry/players.json')
   form.value.telemetryPollSeconds = value(values, 'PZ_TELEMETRY_FTP_POLL_SECONDS', '60')
   form.value.playerAuthEnabled = value(values, 'PZ_PLAYER_AUTH_ENABLED') === 'true'
   form.value.playerFtpHost = value(values, 'PZ_PLAYER_DB_FTP_HOST')
