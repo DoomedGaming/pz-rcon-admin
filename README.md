@@ -2,6 +2,8 @@
 
 A reusable, self-hosted administration dashboard and player portal for Project Zomboid Build 42 servers. Its first-run screen encrypts credentials on the backend, supports per-community branding without source edits, polls the live player list, tracks observed sessions, exposes common administration workflows, and records an audit trail of administrator actions.
 
+Canonical repository: <https://github.com/DoomedGaming/pz-rcon-admin>
+
 ## What it can administer
 
 | Area | Available now | Data source |
@@ -59,23 +61,20 @@ The dashboard therefore distinguishes:
 
 1. **Live RCON data** — authoritative online state and command results.
 2. **Observed history** — sessions and online duration measured after this dashboard starts polling.
-3. **Deep telemetry** — the included Build 42 server telemetry utility exports health, kills, survived hours, profession, position, traits, skill levels, carried weight, and the key ID of a vehicle the survivor is currently occupying. It is **not a mod or Workshop item**, and clients never install it. The dashboard retrieves its snapshot through a configured FTP/FTPS endpoint. `/api/telemetry/player` remains available as an authenticated alternative for custom senders.
+3. **Deep telemetry** — the separate [PZ RCON Admin Telemetry](https://github.com/DoomedGaming/pz-rcon-admin-telemetry) companion exports health, kills, survived hours, profession, position, traits, skill levels, carried weight, and the key ID of a vehicle the survivor is currently occupying. It is available either as a directly installed server utility or as a Build 42 Steam Workshop mod. The dashboard retrieves its snapshot through a configured FTP/FTPS endpoint. `/api/telemetry/player` remains available as an authenticated alternative for custom senders.
 
 Hosting-provider operations are separate from RCON. A stopped process cannot be started with RCON. Starting/restarting at the provider level, backups, file management, and account permissions remain in the provider panel. The optional provider link is only a URL; the app stores no hosting-account credentials.
 
 ## Deep telemetry
 
-Deep telemetry uses two local components supplied in this repository:
+Deep telemetry connects two separately maintained components released with the same version number:
 
-1. [`../server-telemetry/DoomedTelemetry`](../server-telemetry/DoomedTelemetry) is a credential-free, server-only Project Zomboid Build 42.19+ utility. It is **not a Project Zomboid mod or Steam Workshop item**. It refreshes `Lua/DoomedTelemetry/players.json` when the online survivor count changes and otherwise throttles writes to once per real minute while the server is active.
+1. [PZ RCON Admin Telemetry](https://github.com/DoomedGaming/pz-rcon-admin-telemetry) is a credential-free, server-only Project Zomboid Build 42.19+ companion. Choose its `direct-install` package or its `workshop` package—never both. Either version refreshes `Lua/DoomedTelemetry/players.json` when the online survivor count changes and otherwise throttles writes to once per real minute while the server is active.
 2. The dashboard's built-in FTP bridge retrieves that file from a host that exposes the server files over FTP or FTPS, validates its schema and limits, then updates the survivor registry in one batch.
 
-Upload
-`../server-telemetry/DoomedTelemetry/server-files/media/lua/server/DoomedTelemetry_Server.lua`
-to `media/lua/server/DoomedTelemetry_Server.lua` in the game server file tree. Do **not** add
-`DoomedTelemetry` to `Mods`, **Mod Loading IDs**, `WorkshopItems`, or a Workshop collection.
-Restart the game server once so the utility loads. Provider game updates or **Verify game files**
-may remove this server-side file, so re-check the path after either operation.
+For the direct package, upload `direct-install/media/lua/server/DoomedTelemetry_Server.lua` from the companion repository to `media/lua/server/DoomedTelemetry_Server.lua` in the game server tree. Do **not** add the direct package to `Mods` or `WorkshopItems`. Provider game updates or **Verify game files** may remove this file, so re-check the path after either operation.
+
+For the Workshop package, publish or subscribe to its Steam item, add the numeric Workshop item ID to `WorkshopItems`, and add the Mod ID `PZRconAdminTelemetry` to `Mods`. Remove the direct-install file before enabling the mod. See the companion repository's [direct-install instructions](https://github.com/DoomedGaming/pz-rcon-admin-telemetry/tree/main/direct-install) and [Workshop instructions](https://github.com/DoomedGaming/pz-rcon-admin-telemetry/tree/main/workshop) for the complete procedures.
 
 Enter the FTP or FTPS values supplied by the hosting provider under **Optional server-file access** during first-run setup. The following equivalent environment overrides resemble G-Portal, but any compatible file host works:
 
@@ -90,6 +89,10 @@ PZ_TELEMETRY_FTP_POLL_SECONDS=60
 ```
 
 Then rebuild or restart the dashboard. Its Overview and Mods & Settings pages report whether FTP is configured, connected, waiting for the first snapshot, or returning an actionable error. FTP and RCON credentials stay on the backend and are never included in the browser API or server telemetry utility.
+
+### Lockstep versions
+
+The dashboard and telemetry companion intentionally use the same semantic version. This release is `0.1.0` and requires telemetry `0.1.0`. `release.json` records that exact pairing, and `npm run check` verifies the sibling telemetry checkout when both repositories are next to each other. When either component changes, run `npm run release:version -- X.Y.Z` from this repository to update both sibling checkouts, then release both with the same `vX.Y.Z` tag. The unchanged repository receives a metadata-only release if necessary.
 
 ## Player portal
 
@@ -248,3 +251,17 @@ This runs Vue/server type checks, unit tests for the player parser, configuratio
 ## Local data
 
 Runtime history is written to `data/dashboard.json` with owner-only file permissions. It is ignored by Git. Delete that file only if you intentionally want to erase dashboard-observed player history and the local audit log.
+
+## License
+
+PZ RCON Admin is source-available under the [PolyForm Noncommercial License 1.0.0](LICENSE.md).
+
+Noncommercial use, modification, and redistribution are permitted under that license. Commercial use is not permitted. Preserve the license and its required copyright notice when sharing original or modified copies.
+
+Third-party dependencies and external services remain governed by their own terms; see [Third-Party Notices](THIRD_PARTY_NOTICES.md).
+
+Contributions are accepted under the same noncommercial terms; see [Contributing](CONTRIBUTING.md).
+
+Project Zomboid and its related names, game content, and assets belong to their respective owners. PZ RCON Admin is an unofficial community project and is not affiliated with or endorsed by The Indie Stone.
+
+The canonical source is maintained at <https://github.com/DoomedGaming/pz-rcon-admin>.

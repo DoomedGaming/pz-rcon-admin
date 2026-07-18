@@ -413,6 +413,7 @@ onBeforeUnmount(() => {
       </div>
       <nav class="player-login-links" aria-label="Community links">
         <a v-for="link in communityLinks" :key="link.label" :href="link.url" target="_blank" rel="noreferrer">{{ link.label }} ↗</a>
+        <a href="https://github.com/DoomedGaming/pz-rcon-admin" target="_blank" rel="noreferrer">Source &amp; license ↗</a>
       </nav>
     </section>
   </main>
@@ -537,7 +538,8 @@ onBeforeUnmount(() => {
 
       <footer class="player-portal-footnote">
         <span :class="['status-dot', { live: portal.telemetry.connected }]"></span>
-        Character data is read-only. Last telemetry sync {{ relativeTime(portal.telemetry.lastSyncAt) }}.
+        <span>Character data is read-only. Last telemetry sync {{ relativeTime(portal.telemetry.lastSyncAt) }}.</span>
+        <a href="https://github.com/DoomedGaming/pz-rcon-admin" target="_blank" rel="noreferrer">Source &amp; license ↗</a>
       </footer>
     </main>
 

@@ -1,6 +1,16 @@
 {
   "name": "pz-rcon-admin",
   "version": "0.1.0",
+  "author": "DoomiestDoom",
+  "license": "PolyForm-Noncommercial-1.0.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/DoomedGaming/pz-rcon-admin.git"
+  },
+  "homepage": "https://github.com/DoomedGaming/pz-rcon-admin#readme",
+  "bugs": {
+    "url": "https://github.com/DoomedGaming/pz-rcon-admin/issues"
+  },
   "private": true,
   "type": "module",
   "scripts": {
@@ -13,9 +23,11 @@
     "build:server": "tsc -p tsconfig.server.build.json",
     "start": "NODE_ENV=production node dist/server-node/server/index.js",
     "start:private": "npm start",
+    "check:versions": "node scripts/verify-version-sync.mjs",
+    "release:version": "node scripts/set-lockstep-version.mjs",
     "typecheck": "vue-tsc --noEmit && tsc -p tsconfig.server.json --noEmit",
     "test": "vitest run --dir tests",
-    "check": "npm run typecheck && npm test && npm run build"
+    "check": "npm run check:versions && npm run typecheck && npm test && npm run build"
   },
   "dependencies": {
     "basic-ftp": "^5.3.1",

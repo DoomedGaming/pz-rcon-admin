@@ -25,6 +25,7 @@ RUN npm ci --omit=dev --ignore-scripts \
     && chown -R node:node /app
 
 COPY --from=build --chown=node:node /app/dist ./dist
+COPY --chown=node:node LICENSE.md THIRD_PARTY_NOTICES.md ./
 
 USER node
 EXPOSE 8787
