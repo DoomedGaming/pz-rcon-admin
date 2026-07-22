@@ -28,7 +28,7 @@ const form = ref({
   telemetryPassword: '',
   telemetrySecure: 'false',
   telemetryPath: 'Lua/PZRconAdminTelemetry/players.json',
-  telemetryPollSeconds: '60',
+  telemetryPollSeconds: '5',
   configFtpPath: 'Server/servertest.ini',
   sandboxFtpPath: 'Server/servertest_SandboxVars.lua',
   playerAuthEnabled: false,
@@ -207,7 +207,7 @@ async function save() {
           <label>Password<input v-model="form.telemetryPassword" type="password" autocomplete="new-password" /></label>
           <label>Transport<select v-model="form.telemetrySecure"><option value="false">Plain FTP</option><option value="true">Explicit FTPS</option><option value="implicit">Implicit FTPS</option></select></label>
           <label>Telemetry file path<input v-model="form.telemetryPath" autocomplete="off" /></label>
-          <label>Poll interval (seconds)<input v-model="form.telemetryPollSeconds" type="number" min="15" /></label>
+          <label>Poll interval (seconds)<input v-model="form.telemetryPollSeconds" type="number" min="5" /></label>
           <label>Server INI FTP path <small>Refreshed automatically.</small><input v-model="form.configFtpPath" autocomplete="off" /></label>
           <label>SandboxVars FTP path <small>Refreshed automatically.</small><input v-model="form.sandboxFtpPath" autocomplete="off" /></label>
           <label class="wide">Telemetry HTTP token <small>Optional secret for custom authenticated senders.</small><input v-model="form.telemetryToken" type="password" autocomplete="new-password" /></label>

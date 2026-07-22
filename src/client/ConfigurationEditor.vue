@@ -34,7 +34,7 @@ const form = ref({
   telemetryPassword: '',
   telemetrySecure: 'false',
   telemetryPath: 'Lua/PZRconAdminTelemetry/players.json',
-  telemetryPollSeconds: '60',
+  telemetryPollSeconds: '5',
   configFtpPath: 'Server/servertest.ini',
   sandboxFtpPath: 'Server/servertest_SandboxVars.lua',
   playerAuthEnabled: false,
@@ -98,7 +98,7 @@ function hydrate(state: ConfigurationState) {
   form.value.telemetryUser = value(values, 'PZ_TELEMETRY_FTP_USER')
   form.value.telemetrySecure = value(values, 'PZ_TELEMETRY_FTP_SECURE', 'false')
   form.value.telemetryPath = value(values, 'PZ_TELEMETRY_FTP_PATH', 'Lua/PZRconAdminTelemetry/players.json')
-  form.value.telemetryPollSeconds = value(values, 'PZ_TELEMETRY_FTP_POLL_SECONDS', '60')
+  form.value.telemetryPollSeconds = value(values, 'PZ_TELEMETRY_FTP_POLL_SECONDS', '5')
   form.value.configFtpPath = value(values, 'PZ_CONFIG_FTP_PATH', 'Server/servertest.ini')
   form.value.sandboxFtpPath = value(values, 'PZ_SANDBOX_FTP_PATH', 'Server/servertest_SandboxVars.lua')
   form.value.playerAuthEnabled = value(values, 'PZ_PLAYER_AUTH_ENABLED') === 'true'
@@ -287,7 +287,7 @@ onMounted(() => void load())
         <label class="check"><input v-model="clearSecrets" type="checkbox" value="PZ_TELEMETRY_FTP_PASSWORD" /> Remove stored FTP password</label>
         <label>Transport<select v-model="form.telemetrySecure"><option value="false">Plain FTP</option><option value="true">Explicit FTPS</option><option value="implicit">Implicit FTPS</option></select></label>
         <label>Telemetry file path<input v-model="form.telemetryPath" autocomplete="off" /></label>
-        <label>Poll interval (seconds)<input v-model="form.telemetryPollSeconds" type="number" min="15" /></label>
+        <label>Poll interval (seconds)<input v-model="form.telemetryPollSeconds" type="number" min="5" /></label>
         <label>Server INI FTP path <small>Refreshed automatically.</small><input v-model="form.configFtpPath" autocomplete="off" /></label>
         <label>SandboxVars FTP path <small>Refreshed automatically.</small><input v-model="form.sandboxFtpPath" autocomplete="off" /></label>
         <label class="wide">New telemetry HTTP token <small>{{ configuredHint('PZ_TELEMETRY_TOKEN') }}</small><input v-model="form.telemetryToken" type="password" autocomplete="new-password" :disabled="clearSecrets.includes('PZ_TELEMETRY_TOKEN')" /></label>

@@ -71,5 +71,6 @@ describe('encrypted secure configuration', () => {
 
     expect(config.PZ_CONFIG_FTP_PATH).toBe('Server/servertest.ini')
     expect(config.PZ_SANDBOX_FTP_PATH).toBe('Server/servertest_SandboxVars.lua')
+    expect(config.PZ_TELEMETRY_FTP_POLL_SECONDS).toBe('5')
   })
 })

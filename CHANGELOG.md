@@ -8,6 +8,12 @@ This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.5.2] - 2026-07-22
+
+### Fixed
+
+- The setup and Configuration forms now default telemetry FTP polling to five seconds and allow the five-second minimum used by the dashboard and telemetry exporter.
+
 ## [0.5.1] - 2026-07-22
 
 ### Fixed
@@ -63,7 +69,8 @@ This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 - Corrected the GitHub Container Registry workflow's image build platform.
 
-[Unreleased]: https://github.com/DoomedGaming/pz-rcon-admin/compare/v0.5.1...HEAD
+[Unreleased]: https://github.com/DoomedGaming/pz-rcon-admin/compare/v0.5.2...HEAD
+[0.5.2]: https://github.com/DoomedGaming/pz-rcon-admin/compare/v0.5.1...v0.5.2
 [0.5.1]: https://github.com/DoomedGaming/pz-rcon-admin/compare/v0.5.0...v0.5.1
 [0.5.0]: https://github.com/DoomedGaming/pz-rcon-admin/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/DoomedGaming/pz-rcon-admin/compare/v0.3.0...v0.4.0

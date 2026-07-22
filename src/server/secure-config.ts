@@ -136,7 +136,7 @@ export function buildInitialSecureConfig(value: unknown): SecureConfig {
       ? config.PZ_TELEMETRY_FTP_SECURE
       : 'false'
     config.PZ_TELEMETRY_FTP_PATH ||= 'Lua/PZRconAdminTelemetry/players.json'
-    config.PZ_TELEMETRY_FTP_POLL_SECONDS ||= '60'
+    config.PZ_TELEMETRY_FTP_POLL_SECONDS ||= '5'
     config.PZ_CONFIG_FTP_PATH ||= `Server/${world}.ini`
     config.PZ_SANDBOX_FTP_PATH ||= `Server/${world}_SandboxVars.lua`
   }
