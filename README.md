@@ -57,7 +57,7 @@ PZ_PROVIDER_URL=https://provider.example.com/my-server
 
 Players can independently choose Green, Amber, Blue, Violet, or Rose in their account settings. Their choice follows them into the staff console if they are promoted.
 
-The command inventory was verified against the live Build 42 server's own `help` response. It currently reports 42 RCON commands. The raw console exposes that authoritative help text, while the graphical controls include the safe and useful subset whose syntax was confirmed live. Teleport is also available as a guarded player action because the current official command-class reference includes both [`TeleportCommand`](https://projectzomboid.com/modding/zombie/commands/serverCommands/TeleportCommand.html) and [`TeleportToCommand`](https://projectzomboid.com/modding/zombie/commands/serverCommands/TeleportToCommand.html), even though the live server's earlier help snapshot omitted them. The app requires the source player to be online, validates coordinate input, confirms the destination, audits the command, and reports an actionable error if the running server rejects it. Other older commands found in online guides—such as weather start/stop, statistics, and access-level assignment—remain raw-console only unless their syntax is verified against the running server.
+The command inventory was verified against the live Build 42 server's own `help` response. It currently reports 42 RCON commands. The raw console exposes that authoritative help text, while the graphical controls include the safe and useful subset whose syntax was confirmed live. Teleport is also available as a guarded player action because the current official command-class reference includes both [`TeleportCommand`](https://projectzomboid.com/modding/zombie/commands/serverCommands/TeleportCommand.html) and [`TeleportToCommand`](https://projectzomboid.com/modding/zombie/commands/serverCommands/TeleportToCommand.html), even though the live server's earlier help snapshot omitted them. When a destination has a position from the last 15 seconds of telemetry, survivor-to-survivor teleport uses the reliable coordinate form; otherwise it uses the native two-player form. The app requires the source player to be online, validates coordinate input, confirms the destination, audits the command, and reports an actionable error if the running server rejects it. Other older commands found in online guides—such as weather start/stop, statistics, and access-level assignment—remain raw-console only unless their syntax is verified against the running server.
 
 ## Important capability boundary
 
@@ -91,12 +91,13 @@ PZ_TELEMETRY_FTP_USER=your-provider-ftp-user
 PZ_TELEMETRY_FTP_PASSWORD=your-provider-ftp-password
 PZ_TELEMETRY_FTP_SECURE=false
 PZ_TELEMETRY_FTP_PATH=Lua/PZRconAdminTelemetry/players.json
-PZ_TELEMETRY_FTP_POLL_SECONDS=60
+PZ_TELEMETRY_FTP_POLL_SECONDS=5
 PZ_CONFIG_FTP_PATH=Server/servertest.ini
 PZ_SANDBOX_FTP_PATH=Server/servertest_SandboxVars.lua
+PZ_CONFIG_FTP_POLL_SECONDS=60
 ```
 
-Then rebuild or restart the dashboard. It immediately retrieves telemetry, `servertest.ini`, and `SandboxVars.lua`, then checks all three again on `PZ_TELEMETRY_FTP_POLL_SECONDS`. Changed configuration is applied in memory without a dashboard restart, so mod counts and searchable settings do not become stale. Its Overview and Mods & Settings pages report whether FTP is configured, connected, waiting for the first snapshot, or returning an actionable error. FTP and RCON credentials stay on the backend and are never included in the browser API or server telemetry utility.
+Then rebuild or restart the dashboard. It immediately retrieves telemetry, `servertest.ini`, and `SandboxVars.lua`. Telemetry refreshes on `PZ_TELEMETRY_FTP_POLL_SECONDS`, while the two configuration files use `PZ_CONFIG_FTP_POLL_SECONDS`. Changed configuration is applied in memory without a dashboard restart, so mod counts and searchable settings do not become stale. Its Overview and Mods & Settings pages report whether FTP is configured, connected, waiting for the first snapshot, or returning an actionable error. FTP and RCON credentials stay on the backend and are never included in the browser API or server telemetry utility.
 
 ### Lockstep versions
 

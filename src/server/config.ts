@@ -63,7 +63,7 @@ export const appConfig = {
     password: process.env.PZ_TELEMETRY_FTP_PASSWORD || '',
     secure: ftpSecure(process.env.PZ_TELEMETRY_FTP_SECURE),
     remotePath: process.env.PZ_TELEMETRY_FTP_PATH || 'Lua/PZRconAdminTelemetry/players.json',
-    pollSeconds: Math.max(15, int(process.env.PZ_TELEMETRY_FTP_POLL_SECONDS, 60)),
+    pollSeconds: Math.max(5, int(process.env.PZ_TELEMETRY_FTP_POLL_SECONDS, 5)),
   },
   serverConfigFtp: {
     host: process.env.PZ_TELEMETRY_FTP_HOST || '',
@@ -77,7 +77,7 @@ export const appConfig = {
     sandboxPath: process.env.PZ_SANDBOX_PATH && existsSync(process.env.PZ_SANDBOX_PATH)
       ? undefined
       : process.env.PZ_SANDBOX_FTP_PATH || 'Server/servertest_SandboxVars.lua',
-    pollSeconds: Math.max(15, int(process.env.PZ_TELEMETRY_FTP_POLL_SECONDS, 60)),
+    pollSeconds: Math.max(15, int(process.env.PZ_CONFIG_FTP_POLL_SECONDS, 60)),
   },
   playerAuth: {
     enabled: playerAuthEnabled,

@@ -1,7 +1,7 @@
 {
-  "version": "0.5.0",
+  "version": "0.5.1",
   "telemetry": {
     "repository": "https://github.com/DoomedGaming/pz-rcon-admin-telemetry",
-    "version": "0.5.0"
+    "version": "0.5.1"
   }
 }

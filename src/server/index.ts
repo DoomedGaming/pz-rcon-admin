@@ -2,12 +2,12 @@ import { createHash, randomBytes, timingSafeEqual } from 'node:crypto'
 import { existsSync } from 'node:fs'
 import { resolve } from 'node:path'
 import express, { type Request, type Response } from 'express'
-import type { DashboardRole, Overview, PlayerPortalLanding, PlayerPortalOverview } from '../shared/types.js'
+import type { DashboardRole, Overview, PlayerPortalLanding, PlayerPortalOverview, PlayerTelemetry } from '../shared/types.js'
 import { isSupportRequestStatus, normalizeSupportRequestInput, normalizeSupportRequestMessage } from '../shared/support-requests.js'
 import { isValidWorldMapTile, worldMapUpstreamTileUrl } from '../shared/world-map.js'
 import { createAuth, createPlayerAuth } from './auth.js'
 import { appConfig } from './config.js'
-import { buildDefinedCommand, buildPlayerCommand, commandDefinitions, validatePlayerActionOutput, validateRawCommand, type PlayerAction } from './commands.js'
+import { buildDefinedCommand, buildPlayerCommand, buildPlayerTeleportToPositionCommand, commandDefinitions, validatePlayerActionOutput, validateRawCommand, type PlayerAction } from './commands.js'
 import { parseSandboxLua, summarizeConfig } from './ini.js'
 import { LiveSettingsService, validateLiveSettingOutput } from './live-settings.js'
 import { isPlayerTheme } from '../shared/player-settings.js'
@@ -52,6 +52,15 @@ const setupRequired = !appConfig.secureConfig.configured && !(
 )
 
 const roleRank: Record<DashboardRole, number> = { user: 0, moderator: 1, admin: 2 }
+const TELEPORT_POSITION_MAX_AGE_MS = 15_000
+
+function currentTeleportPosition(telemetry: PlayerTelemetry | undefined) {
+  const position = telemetry?.position
+  const updatedAt = telemetry?.updatedAt ? Date.parse(telemetry.updatedAt) : NaN
+  if (!position || !Number.isFinite(updatedAt)) return undefined
+  const age = Date.now() - updatedAt
+  return age >= -5_000 && age <= TELEPORT_POSITION_MAX_AGE_MS ? position : undefined
+}
 
 function requestDashboardIdentity(request: Request): { username?: string; role: DashboardRole; method?: 'player' | 'bootstrap' } {
   if (auth.authenticated(request)) return { role: 'admin', method: 'bootstrap' }
@@ -126,7 +135,8 @@ function scheduleConfigurationRestart(response: Response) {
     const restartTimer = setTimeout(() => {
       console.log('Secure configuration changed. Exiting so the process supervisor can restart PZ RCON Admin.')
       clearInterval(pollTimer)
-      if (ftpPollTimer) clearInterval(ftpPollTimer)
+      if (telemetryFtpPollTimer) clearInterval(telemetryFtpPollTimer)
+      if (serverConfigFtpPollTimer) clearInterval(serverConfigFtpPollTimer)
       server.close(() => process.exit(0))
       const forceExitTimer = setTimeout(() => process.exit(0), 5_000)
       forceExitTimer.unref()
@@ -566,6 +576,7 @@ app.post('/api/players/:username/actions', async (request, response) => {
   const username = request.params.username.slice(0, 64)
   const action = String(request.body?.action ?? '') as PlayerAction
   try {
+    let teleportPosition: ReturnType<typeof currentTeleportPosition>
     const identity = requestDashboardIdentity(request)
     if (identity.role !== 'admin' && !['kick', 'ban', 'remove-whitelist'].includes(action)) {
       return response.status(403).json({ error: 'Administrator access required for this player action' })
@@ -581,12 +592,15 @@ app.post('/api/players/:username/actions', async (request, response) => {
         const destination = store.getPlayer(String(request.body?.payload?.destination ?? ''))
         if (!destination?.online) throw new Error('The destination survivor must be online')
         request.body.payload.destination = destination.username
+        teleportPosition = currentTeleportPosition(destination.telemetry)
       }
     }
-    const command = buildPlayerCommand(username, action, request.body?.payload)
-    const output = validatePlayerActionOutput(action, await rcon.send(command))
+    const command = teleportPosition
+      ? buildPlayerTeleportToPositionCommand(username, teleportPosition)
+      : buildPlayerCommand(username, action, request.body?.payload)
+    const output = validatePlayerActionOutput(teleportPosition ? 'teleport-coordinates' : action, await rcon.send(command))
     store.addAudit({ category: 'player', action, target: username, command: redactCommand(command), success: true })
-    response.json({ ok: true, output })
+    response.json({ ok: true, output, teleportMethod: teleportPosition ? 'coordinates' : 'player' })
   } catch (error) {
     store.addAudit({ category: 'player', action: action || 'unknown', target: username, success: false, detail: errorMessage(error) })
     response.status(400).json({ error: errorMessage(error) })
@@ -701,21 +715,24 @@ void poll()
 const pollTimer = setInterval(() => void poll(), appConfig.rcon.pollSeconds * 1000)
 pollTimer.unref()
 
-const ftpConfigured = telemetryBridge.getState().configured || serverConfigBridge.getState().configured
-async function pollFtpFiles() {
-  if (telemetryBridge.getState().configured) await telemetryBridge.poll()
-  if (serverConfigBridge.getState().configured) await serverConfigBridge.poll()
-}
-if (ftpConfigured) void pollFtpFiles()
-const ftpPollTimer = ftpConfigured
-  ? setInterval(() => void pollFtpFiles(), appConfig.telemetryFtp.pollSeconds * 1000)
+const telemetryFtpConfigured = telemetryBridge.getState().configured
+const serverConfigFtpConfigured = serverConfigBridge.getState().configured
+if (telemetryFtpConfigured) void telemetryBridge.poll()
+if (serverConfigFtpConfigured) void serverConfigBridge.poll()
+const telemetryFtpPollTimer = telemetryFtpConfigured
+  ? setInterval(() => void telemetryBridge.poll(), appConfig.telemetryFtp.pollSeconds * 1000)
   : undefined
-ftpPollTimer?.unref()
+const serverConfigFtpPollTimer = serverConfigFtpConfigured
+  ? setInterval(() => void serverConfigBridge.poll(), appConfig.serverConfigFtp.pollSeconds * 1000)
+  : undefined
+telemetryFtpPollTimer?.unref()
+serverConfigFtpPollTimer?.unref()
 
 for (const signal of ['SIGINT', 'SIGTERM'] as const) {
   process.on(signal, () => {
     clearInterval(pollTimer)
-    if (ftpPollTimer) clearInterval(ftpPollTimer)
+    if (telemetryFtpPollTimer) clearInterval(telemetryFtpPollTimer)
+    if (serverConfigFtpPollTimer) clearInterval(serverConfigFtpPollTimer)
     server.close(() => process.exit(0))
   })
 }

@@ -36,6 +36,12 @@ export function buildDefinedCommand(id: string, args: Record<string, unknown> = 
 
 export type PlayerAction = 'kick' | 'ban' | 'godmode' | 'invisible' | 'noclip' | 'lightning' | 'horde' | 'additem' | 'addxp' | 'vehicle' | 'key' | 'teleport-coordinates' | 'teleport-player' | 'remove-whitelist'
 
+export interface TeleportPosition {
+  x: number
+  y: number
+  z: number
+}
+
 function teleportCoordinate(value: unknown, label: string, maximum: number): number {
   const coordinate = Number(value)
   if (!Number.isInteger(coordinate) || coordinate < 0 || coordinate > maximum) {
@@ -87,12 +93,26 @@ export function buildPlayerCommand(username: string, action: PlayerAction, paylo
   }
 }
 
+// Build 42's two-player teleport command is inconsistent over RCON on some
+// servers. Positions from the trusted telemetry bridge let the dashboard use
+// the server's reliable coordinate form instead.
+export function buildPlayerTeleportToPositionCommand(username: string, position: TeleportPosition): string {
+  return buildPlayerCommand(username, 'teleport-coordinates', {
+    x: Math.floor(position.x),
+    y: Math.floor(position.y),
+    z: Math.floor(position.z),
+  })
+}
+
 export function validatePlayerActionOutput(action: PlayerAction, output: string): string {
   if (/\bunknown command\b|\bcommand\b.*\b(?:not found|not recognized)\b/i.test(output)) {
     throw new Error('This Project Zomboid server build does not expose that RCON command')
   }
   if (/\bno such user\b|\buser\b.*\bnot found\b/i.test(output)) {
     throw new Error('Project Zomboid could not find that connected player')
+  }
+  if (action.startsWith('teleport') && /\b(?:error|failed|unable|cannot)\b.*\b(?:teleport|player|user)\b|\busage\s*:\s*\/?teleport/i.test(output)) {
+    throw new Error('Project Zomboid rejected the teleport request')
   }
   if (action === 'addxp' && /list of available perks\s*:/i.test(output)) {
     throw new Error('Project Zomboid rejected that XP skill')

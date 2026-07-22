@@ -31,7 +31,7 @@
   <main id="main">
     <header class="page-hero">
       <div class="shell">
-        <p class="eyebrow">Operator field manual · v0.5.0</p>
+        <p class="eyebrow">Operator field manual · v0.5.1</p>
         <h1>Install once.<br><span>Know every part.</span></h1>
         <p>Deploy the dashboard, complete encrypted first-run setup, connect RCON, and add only the optional integrations your server needs.</p>
       </div>
@@ -231,11 +231,11 @@ docker compose logs -f dashboard</code></pre>
               <tr><td>Telemetry file path</td><td><code>Lua/PZRconAdminTelemetry/players.json</code></td></tr>
               <tr><td>Server INI FTP path</td><td><code>Server/servertest.ini</code></td></tr>
               <tr><td>SandboxVars FTP path</td><td><code>Server/servertest_SandboxVars.lua</code></td></tr>
-              <tr><td>Poll interval</td><td>60 seconds by default; telemetry and both configuration files refresh on this interval, configurable down to 15 seconds.</td></tr>
+              <tr><td>Telemetry poll interval</td><td>5 seconds by default. Configuration files refresh separately every 60 seconds by default.</td></tr>
               <tr><td>Telemetry HTTP token</td><td>Leave blank unless a custom sender will post authenticated snapshots to the HTTP receiver.</td></tr>
             </tbody>
           </table>
-          <p>The Lua exporter writes at most once per real minute during steady activity, with extra event-driven writes at startup and when the online-player count changes. Lowering the dashboard FTP poll interval checks more often but does not make the exporter generate movement snapshots faster.</p>
+          <p>The Lua exporter writes at most every 5 seconds during steady activity, with extra event-driven writes at startup and when the online-player count changes. The dashboard retrieves the latest snapshot on the same interval.</p>
           <a class="top-link" href="#main">Back to top ↑</a>
         </section>
 
@@ -308,7 +308,7 @@ docker compose logs -f dashboard</code></pre>
 docker compose up -d --no-build dashboard
 docker compose logs --tail=100 dashboard</code></pre>
           </div>
-          <p>For predictable rollouts, replace <code>latest</code> in Compose with a release such as <code class="inline-code">0.5.0</code>. The tags <code>X.Y.Z</code> and <code>X.Y</code> are published for each release.</p>
+          <p>For predictable rollouts, replace <code>latest</code> in Compose with a release such as <code class="inline-code">0.5.1</code>. The tags <code>X.Y.Z</code> and <code>X.Y</code> are published for each release.</p>
 
           <h3>Back up persistent data</h3>
           <p>Back up the named volume before major changes. It contains both the encrypted configuration and the encryption key, plus player history, roles, support requests, preferences, and audit records. A backup of only one secure-config file is not sufficient.</p>
@@ -368,9 +368,10 @@ curl -i http://127.0.0.1:8788/api/health</code></pre>
               <tr><td><code>PZ_RCON_PASSWORD</code></td><td>Required</td><td>Project Zomboid RCON password.</td></tr>
               <tr><td><code>PZ_RCON_POLL_SECONDS</code></td><td><code>15</code></td><td>RCON player/status polling; minimum 5 seconds.</td></tr>
               <tr><td><code>PZ_TELEMETRY_FTP_PATH</code></td><td><code>Lua/PZRconAdminTelemetry/players.json</code></td><td>Remote telemetry snapshot path.</td></tr>
-              <tr><td><code>PZ_TELEMETRY_FTP_POLL_SECONDS</code></td><td><code>60</code></td><td>Dashboard telemetry retrieval; minimum 15 seconds.</td></tr>
-              <tr><td><code>PZ_CONFIG_FTP_PATH</code></td><td><code>Server/servertest.ini</code></td><td>Remote server INI path, refreshed on the FTP polling interval.</td></tr>
-              <tr><td><code>PZ_SANDBOX_FTP_PATH</code></td><td><code>Server/servertest_SandboxVars.lua</code></td><td>Remote SandboxVars path, refreshed on the FTP polling interval.</td></tr>
+              <tr><td><code>PZ_TELEMETRY_FTP_POLL_SECONDS</code></td><td><code>5</code></td><td>Dashboard telemetry retrieval; minimum 5 seconds.</td></tr>
+              <tr><td><code>PZ_CONFIG_FTP_POLL_SECONDS</code></td><td><code>60</code></td><td>Server configuration retrieval; minimum 15 seconds.</td></tr>
+              <tr><td><code>PZ_CONFIG_FTP_PATH</code></td><td><code>Server/servertest.ini</code></td><td>Remote server INI path, refreshed on the configuration polling interval.</td></tr>
+              <tr><td><code>PZ_SANDBOX_FTP_PATH</code></td><td><code>Server/servertest_SandboxVars.lua</code></td><td>Remote SandboxVars path, refreshed on the configuration polling interval.</td></tr>
               <tr><td><code>PZ_PLAYER_AUTH_ENABLED</code></td><td><code>false</code></td><td>Enables Project Zomboid account sign-in.</td></tr>
               <tr><td><code>PZ_PLAYER_DB_FTP_PATH</code></td><td><code>db/servertest.db</code></td><td>Remote account database path.</td></tr>
               <tr><td><code>PZ_CONFIG_PATH</code></td><td>Empty</td><td>Optional container path to read-only <code>servertest.ini</code>.</td></tr>
@@ -403,7 +404,7 @@ curl -i http://127.0.0.1:8788/api/health</code></pre>
 
   <footer class="site-footer">
     <div class="shell footer-grid">
-      <span>Documentation for PZ RCON Admin v0.5.0 · Updated with the project.</span>
+      <span>Documentation for PZ RCON Admin v0.5.1 · Updated with the project.</span>
       <div class="footer-links">
         <a href="../">Home</a>
         <a href="https://github.com/DoomedGaming/pz-rcon-admin/issues">Report an issue</a>

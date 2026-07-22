@@ -371,7 +371,7 @@ async function playerAction(username: string, action: string, payload: Record<st
   if (action === 'teleport-player' && !window.confirm(`Teleport ${username} to ${payload.destination}?`)) return false
   busy.value = `player-${action}`
   try {
-    const result = await api<{ output: string }>(`/api/players/${encodeURIComponent(username)}/actions`, {
+    const result = await api<{ output: string; teleportMethod?: 'coordinates' | 'player' }>(`/api/players/${encodeURIComponent(username)}/actions`, {
       method: 'POST',
       body: JSON.stringify({ action, payload, confirm: ['ban', 'teleport-coordinates', 'teleport-player'].includes(action) ? username : undefined }),
     })
@@ -383,7 +383,9 @@ async function playerAction(username: string, action: string, payload: Record<st
     } else if (action === 'teleport-coordinates') {
       notify(`${username} teleported to ${payload.x}, ${payload.y}, z${payload.z}`)
     } else if (action === 'teleport-player') {
-      notify(`${username} teleported to ${payload.destination}`)
+      notify(result.teleportMethod === 'coordinates'
+        ? `${username} teleported to ${payload.destination}'s latest tracked position`
+        : `${username} teleported to ${payload.destination}`)
     } else {
       notify(`${action} command completed for ${username}`)
     }
@@ -803,7 +805,7 @@ onBeforeUnmount(() => {
                       <section class="player-detail-section"><h3>Abilities & events</h3><div class="ability-grid"><button :class="{ active: godModeEnabled[playerItem.username] }" :aria-pressed="Boolean(godModeEnabled[playerItem.username])" :disabled="busy.startsWith('player-')" @click="toggleGodMode(playerItem.username)">{{ godModeEnabled[playerItem.username] ? 'Disable god mode' : 'Enable god mode' }}</button><button :disabled="busy.startsWith('player-')" @click="playerAction(playerItem.username, 'invisible')">Invisible</button><button :disabled="busy.startsWith('player-')" @click="playerAction(playerItem.username, 'noclip')">No clip</button><button :disabled="busy.startsWith('player-')" @click="playerAction(playerItem.username, 'lightning')">Lightning</button><button :disabled="busy.startsWith('player-')" @click="playerAction(playerItem.username, 'horde', { count: hordeCount })">Horde × {{ hordeCount }}</button></div></section>
                       <section class="player-detail-section teleport-section">
                         <div class="teleport-heading">
-                          <div><h3>Teleport</h3><p>Move this online survivor to exact world coordinates or to another connected survivor.</p></div>
+                          <div><h3>Teleport</h3><p>Move this online survivor to exact world coordinates or another connected survivor. Fresh telemetry positions use the reliable coordinate command.</p></div>
                           <span :class="['teleport-ready', { online: playerItem.online }]">{{ playerItem.online ? 'READY' : 'OFFLINE' }}</span>
                         </div>
                         <div class="field-combo teleport-coordinate-combo">

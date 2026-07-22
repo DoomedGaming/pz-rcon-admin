@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { buildDefinedCommand, buildPlayerCommand, validatePlayerActionOutput, validateRawCommand } from '../src/server/commands.js'
+import { buildDefinedCommand, buildPlayerCommand, buildPlayerTeleportToPositionCommand, validatePlayerActionOutput, validateRawCommand } from '../src/server/commands.js'
 
 describe('command builders', () => {
   it('quotes announcement text and removes newline injection', () => {
@@ -18,6 +18,8 @@ describe('command builders', () => {
       .toBe('teleportto "Alice" 10632,9761,0')
     expect(buildPlayerCommand('Alice', 'teleport-player', { destination: 'Bob' }))
       .toBe('teleport "Alice" "Bob"')
+    expect(buildPlayerTeleportToPositionCommand('Alice', { x: 10_632.9, y: 9_761.1, z: 0 }))
+      .toBe('teleportto "Alice" 10632,9761,0')
   })
 
   it('rejects unsafe teleport destinations', () => {
@@ -55,6 +57,11 @@ describe('command builders', () => {
   it('classifies unavailable server commands as failures', () => {
     expect(() => validatePlayerActionOutput('teleport-coordinates', 'Unknown command teleportto'))
       .toThrow('server build does not expose that RCON command')
+  })
+
+  it('reports rejected teleport replies instead of treating them as successful', () => {
+    expect(() => validatePlayerActionOutput('teleport-player', 'Error: Unable to teleport player')).toThrow('rejected the teleport')
+    expect(() => validatePlayerActionOutput('teleport-player', 'Usage: /teleport "player"')).toThrow('rejected the teleport')
   })
 
   it('rejects empty raw commands', () => {
