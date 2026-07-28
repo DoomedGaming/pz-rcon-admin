@@ -28,7 +28,7 @@ const allNavItems: Array<{ id: Page; label: string; icon: string; adminOnly?: bo
   { id: 'settings', label: 'Live settings', icon: 'sliders', adminOnly: true },
   { id: 'mods', label: 'Mods & config', icon: 'sliders', adminOnly: true },
   { id: 'console', label: 'RCON console', icon: 'terminal', adminOnly: true },
-  { id: 'audit', label: 'Audit log', icon: 'list' },
+  { id: 'audit', label: 'Audit log', icon: 'list', adminOnly: true },
 ]
 const dashboardRoleOptions: DashboardRole[] = ['user', 'moderator', 'admin']
 
@@ -167,7 +167,11 @@ async function loadAll(silent = false) {
     const [nextOverview, nextCommands, nextAudit, config, nextRequests] = await Promise.all([
       api<Overview>('/api/overview'),
       !isAdmin.value || commands.value.length ? Promise.resolve(commands.value) : api<CommandDefinition[]>('/api/commands'),
-      page.value === 'audit' || !audit.value.length ? api<AuditEntry[]>('/api/audit?limit=200') : Promise.resolve(audit.value),
+      !isAdmin.value
+        ? Promise.resolve([])
+        : page.value === 'audit' || !audit.value.length
+          ? api<AuditEntry[]>('/api/audit?limit=200')
+          : Promise.resolve(audit.value),
       !isAdmin.value || Object.keys(sandbox.value).length ? Promise.resolve({ sandbox: sandbox.value }) : api<{ sandbox: Record<string, string | number | boolean> }>('/api/config'),
       api<SupportRequest[]>('/api/requests'),
     ])
@@ -741,7 +745,7 @@ onBeforeUnmount(() => {
                 <div><dt>Deep telemetry</dt><dd>{{ telemetryStatusLabel }}</dd></div>
               </dl>
             </article>
-            <article class="panel">
+            <article v-if="isAdmin" class="panel">
               <div class="panel-heading"><div><p class="eyebrow">Accountability</p><h2>Recent activity</h2></div><button class="text-button" @click="page = 'audit'">Full log →</button></div>
               <div v-if="!overview.recentAudit.length" class="empty-state compact-empty">No administrator actions recorded yet.</div>
               <ul v-else class="activity-list">
@@ -1048,7 +1052,7 @@ onBeforeUnmount(() => {
           </article>
         </template>
 
-        <template v-else-if="page === 'audit'">
+        <template v-else-if="page === 'audit' && isAdmin">
           <div class="section-intro"><div><p class="eyebrow">Local administrator history</p><h2>Audit log</h2><p>Actions are recorded locally with timestamps, targets, outcomes, and redacted command text.</p></div><button class="button outline" @click="loadAll()">Refresh log</button></div>
           <article class="panel table-panel">
             <div v-if="!audit.length" class="empty-state">No actions recorded yet.</div>

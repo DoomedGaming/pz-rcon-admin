@@ -118,7 +118,7 @@ PZ_PLAYER_DB_FTP_PATH=db/servertest.db
 PZ_PLAYER_DB_WORLD=servertest
 ```
 
-The player API derives the username from a signed, HttpOnly session. Every account starts as **User**, which can reach only its own portal data. A **Moderator** can open the admin overview, survivor registry, moderation actions, and audit log. An **Admin** can additionally manage dashboard roles, server and world commands, live settings, configuration, and the raw RCON console. Dashboard roles are independent from Project Zomboid's in-game access levels.
+The player API derives the username from a signed, HttpOnly session. Every account starts as **User**, which can reach only its own portal data. A **Moderator** can open the admin overview, survivor registry, and moderation actions. An **Admin** can additionally view the audit log and manage dashboard roles, server and world commands, live settings, configuration, and the raw RCON console. Dashboard roles are independent from Project Zomboid's in-game access levels.
 
 Signed-in players can open **Request Center** to ask for general help, report that they are stuck, report another survivor, request safehouse assistance, or ask for voice-chat help. A request is private to the account that created it and dashboard staff. Players can view and reply only to their own requests; they never receive RCON or moderation access. A player may have up to five active requests at once. When deep telemetry has a current position for the player, the request stores that location snapshot so staff can review where the problem occurred without exposing another survivor's location.
 

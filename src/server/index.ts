@@ -438,7 +438,7 @@ app.post('/api/telemetry/player', (request, response) => {
 
 app.use('/api', requireDashboardRole('moderator'))
 
-app.get('/api/overview', (_request, response) => {
+app.get('/api/overview', (request, response) => {
   const players = store.getPlayers()
   const summary = appConfig.configSummary
   const telemetryState = telemetryBridge.getState()
@@ -456,7 +456,7 @@ app.get('/api/overview', (_request, response) => {
     },
     players,
     activity: store.getActivity(),
-    recentAudit: store.getAudit(8),
+    recentAudit: requestDashboardIdentity(request).role === 'admin' ? store.getAudit(8) : [],
     config: summary,
     community: appConfig.playerPortal,
     integrations: {
@@ -480,7 +480,7 @@ app.get('/api/overview', (_request, response) => {
 })
 
 app.get('/api/players', (_request, response) => response.json(store.getPlayers()))
-app.get('/api/audit', (request, response) => response.json(store.getAudit(Number(request.query.limit) || 100)))
+app.get('/api/audit', requireDashboardRole('admin'), (request, response) => response.json(store.getAudit(Number(request.query.limit) || 100)))
 app.get('/api/requests', (_request, response) => response.json(store.getSupportRequests()))
 
 app.patch('/api/requests/:id', (request, response) => {

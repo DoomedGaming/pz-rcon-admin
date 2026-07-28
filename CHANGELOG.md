@@ -8,6 +8,12 @@ This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-07-28
+
+### Changed
+
+- Restricted the Audit log navigation, recent-activity summary, and audit API to administrators.
+
 ## [0.5.3] - 2026-07-28
 
 ### Fixed
@@ -75,7 +81,8 @@ This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 - Corrected the GitHub Container Registry workflow's image build platform.
 
-[Unreleased]: https://github.com/DoomedGaming/pz-rcon-admin/compare/v0.5.3...HEAD
+[Unreleased]: https://github.com/DoomedGaming/pz-rcon-admin/compare/v0.6.0...HEAD
+[0.6.0]: https://github.com/DoomedGaming/pz-rcon-admin/compare/v0.5.3...v0.6.0
 [0.5.3]: https://github.com/DoomedGaming/pz-rcon-admin/compare/v0.5.2...v0.5.3
 [0.5.2]: https://github.com/DoomedGaming/pz-rcon-admin/compare/v0.5.1...v0.5.2
 [0.5.1]: https://github.com/DoomedGaming/pz-rcon-admin/compare/v0.5.0...v0.5.1
