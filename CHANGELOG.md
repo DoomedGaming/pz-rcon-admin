@@ -8,6 +8,8 @@ This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.7.2] - 2026-07-28
+
 ### Added
 
 - Discord request notifications now include a clearly labeled excerpt of the original request details for context.
@@ -114,7 +116,8 @@ This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 - Corrected the GitHub Container Registry workflow's image build platform.
 
-[Unreleased]: https://github.com/DoomedGaming/pz-rcon-admin/compare/v0.7.1...HEAD
+[Unreleased]: https://github.com/DoomedGaming/pz-rcon-admin/compare/v0.7.2...HEAD
+[0.7.2]: https://github.com/DoomedGaming/pz-rcon-admin/compare/v0.7.1...v0.7.2
 [0.7.1]: https://github.com/DoomedGaming/pz-rcon-admin/compare/v0.7.0...v0.7.1
 [0.7.0]: https://github.com/DoomedGaming/pz-rcon-admin/compare/v0.6.1...v0.7.0
 [0.6.1]: https://github.com/DoomedGaming/pz-rcon-admin/compare/v0.6.0...v0.6.1
