@@ -19,6 +19,7 @@ const form = ref({
   rconHost: '',
   rconPort: '',
   rconPassword: '',
+  rconPollSeconds: '15',
   configPath: '',
   sandboxPath: '',
   telemetryToken: '',
@@ -98,6 +99,7 @@ async function save() {
           PZ_RCON_HOST: form.value.rconHost,
           PZ_RCON_PORT: form.value.rconPort,
           PZ_RCON_PASSWORD: form.value.rconPassword,
+          PZ_RCON_POLL_SECONDS: form.value.rconPollSeconds,
           PZ_CONFIG_PATH: form.value.configPath,
           PZ_SANDBOX_PATH: form.value.sandboxPath,
           PZ_TELEMETRY_TOKEN: form.value.telemetryToken,
@@ -195,6 +197,7 @@ async function save() {
           <label>RCON host<input v-model="form.rconHost" autocomplete="off" required placeholder="server.example.com" /></label>
           <label>RCON port<input v-model="form.rconPort" type="number" min="1" max="65535" required /></label>
           <label class="wide">RCON password<input v-model="form.rconPassword" type="password" autocomplete="new-password" required /></label>
+          <label>RCON poll interval (seconds)<input v-model="form.rconPollSeconds" type="number" min="5" required /></label>
           <label>Local servertest.ini path <small>Optional container path; overrides FTP.</small><input v-model="form.configPath" autocomplete="off" /></label>
           <label>Local SandboxVars.lua path <small>Optional container path; overrides FTP.</small><input v-model="form.sandboxPath" autocomplete="off" /></label>
         </fieldset>
@@ -207,7 +210,7 @@ async function save() {
           <label>Password<input v-model="form.telemetryPassword" type="password" autocomplete="new-password" /></label>
           <label>Transport<select v-model="form.telemetrySecure"><option value="false">Plain FTP</option><option value="true">Explicit FTPS</option><option value="implicit">Implicit FTPS</option></select></label>
           <label>Telemetry file path<input v-model="form.telemetryPath" autocomplete="off" /></label>
-          <label>Poll interval (seconds)<input v-model="form.telemetryPollSeconds" type="number" min="5" /></label>
+          <label>Telemetry poll interval (seconds)<input v-model="form.telemetryPollSeconds" type="number" min="5" /></label>
           <label>Server INI FTP path <small>Refreshed automatically.</small><input v-model="form.configFtpPath" autocomplete="off" /></label>
           <label>SandboxVars FTP path <small>Refreshed automatically.</small><input v-model="form.sandboxFtpPath" autocomplete="off" /></label>
           <label class="wide">Telemetry HTTP token <small>Optional secret for custom authenticated senders.</small><input v-model="form.telemetryToken" type="password" autocomplete="new-password" /></label>

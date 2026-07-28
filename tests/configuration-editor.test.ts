@@ -23,6 +23,7 @@ describe('secure configuration editor', () => {
     const state = editableSecureConfigState(configured())
 
     expect(state.values.PZ_RCON_HOST).toBe('old.example.test')
+    expect(state.values.PZ_RCON_POLL_SECONDS).toBe('15')
     expect(state.secretsConfigured).toMatchObject({
       DASHBOARD_PASSWORD: true,
       PZ_RCON_PASSWORD: true,
@@ -38,6 +39,7 @@ describe('secure configuration editor', () => {
       config: {
         PZ_RCON_HOST: 'new.example.test',
         PZ_RCON_PORT: 27016,
+        PZ_RCON_POLL_SECONDS: 5,
         DASHBOARD_PASSWORD: '',
         PZ_RCON_PASSWORD: '',
         UNKNOWN_VALUE: 'ignored',
@@ -46,6 +48,7 @@ describe('secure configuration editor', () => {
 
     expect(updated.PZ_RCON_HOST).toBe('new.example.test')
     expect(updated.PZ_RCON_PORT).toBe('27016')
+    expect(updated.PZ_RCON_POLL_SECONDS).toBe('5')
     expect(updated.DASHBOARD_PASSWORD).toBe(dashboardPassword)
     expect(updated.PZ_RCON_PASSWORD).toBe(rconPassword)
     expect(updated).not.toHaveProperty('UNKNOWN_VALUE')

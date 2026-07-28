@@ -47,11 +47,13 @@ describe('encrypted secure configuration', () => {
       PZ_RCON_HOST: '127.0.0.1',
       PZ_RCON_PORT: 27015,
       PZ_RCON_PASSWORD: 'a-rcon-password',
+      PZ_RCON_POLL_SECONDS: 5,
       PZ_PLAYER_AUTH_ENABLED: true,
       PZ_PLAYER_SESSION_SECRET: '',
     })
 
     expect(config.PZ_RCON_PORT).toBe('27015')
+    expect(config.PZ_RCON_POLL_SECONDS).toBe('5')
     expect(config.PZ_PLAYER_AUTH_ENABLED).toBe('true')
     expect(config.DASHBOARD_SESSION_SECRET).toHaveLength(43)
     expect(config.PZ_PLAYER_SESSION_SECRET).toHaveLength(43)
@@ -72,5 +74,15 @@ describe('encrypted secure configuration', () => {
     expect(config.PZ_CONFIG_FTP_PATH).toBe('Server/servertest.ini')
     expect(config.PZ_SANDBOX_FTP_PATH).toBe('Server/servertest_SandboxVars.lua')
     expect(config.PZ_TELEMETRY_FTP_POLL_SECONDS).toBe('5')
+  })
+
+  it('rejects an RCON poll interval below the supported five-second minimum', () => {
+    expect(() => buildInitialSecureConfig({
+      DASHBOARD_PASSWORD: 'a-long-dashboard-password',
+      PZ_RCON_HOST: '127.0.0.1',
+      PZ_RCON_PORT: 27015,
+      PZ_RCON_PASSWORD: 'a-rcon-password',
+      PZ_RCON_POLL_SECONDS: 4,
+    })).toThrow('RCON poll interval must be at least 5 seconds')
   })
 })

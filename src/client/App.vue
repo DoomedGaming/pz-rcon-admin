@@ -680,7 +680,7 @@ onBeforeUnmount(() => {
             <article class="metric-card">
               <div class="metric-head"><span>RCON link</span><span :class="['mini-indicator', { good: overview.connection.connected }]">{{ overview.connection.connected ? 'HEALTHY' : 'DOWN' }}</span></div>
               <strong class="metric-word">{{ overview.connection.connected ? 'ONLINE' : 'OFFLINE' }}</strong>
-              <p>Polling every {{ overview.connection.pollSeconds }} seconds</p>
+              <p>RCON polling every {{ overview.connection.pollSeconds }} seconds</p>
             </article>
             <article class="metric-card">
               <div class="metric-head"><span>Installed mods</span><span class="mini-indicator neutral">CONFIG</span></div>

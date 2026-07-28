@@ -108,6 +108,10 @@ export function buildInitialSecureConfig(value: unknown): SecureConfig {
   const rconPort = Number(config.PZ_RCON_PORT)
   if (!Number.isInteger(rconPort) || rconPort < 1 || rconPort > 65_535) throw new Error('RCON port must be between 1 and 65535')
   if (!config.PZ_RCON_PASSWORD) throw new Error('RCON password is required')
+  const rconPollSeconds = Number(config.PZ_RCON_POLL_SECONDS || 15)
+  if (!Number.isInteger(rconPollSeconds) || rconPollSeconds < 5) {
+    throw new Error('RCON poll interval must be at least 5 seconds')
+  }
   if (config.DASHBOARD_SESSION_SECRET && config.DASHBOARD_SESSION_SECRET.length < 32) {
     throw new Error('Dashboard session secret must be at least 32 characters or left blank for automatic generation')
   }
@@ -117,7 +121,7 @@ export function buildInitialSecureConfig(value: unknown): SecureConfig {
 
   config.DASHBOARD_SESSION_SECRET ||= randomBytes(32).toString('base64url')
   config.DASHBOARD_SECURE_COOKIE = config.DASHBOARD_SECURE_COOKIE === 'true' ? 'true' : 'false'
-  config.PZ_RCON_POLL_SECONDS ||= '15'
+  config.PZ_RCON_POLL_SECONDS = String(rconPollSeconds)
   config.PZ_PLAYER_AUTH_ENABLED = config.PZ_PLAYER_AUTH_ENABLED === 'true' ? 'true' : 'false'
   if (config.PZ_PLAYER_AUTH_ENABLED === 'true') {
     config.PZ_PLAYER_SESSION_SECRET ||= randomBytes(32).toString('base64url')
