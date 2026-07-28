@@ -35,6 +35,19 @@ export function buildDefinedCommand(id: string, args: Record<string, unknown> = 
 }
 
 export type PlayerAction = 'kick' | 'ban' | 'godmode' | 'invisible' | 'noclip' | 'lightning' | 'horde' | 'additem' | 'addxp' | 'vehicle' | 'key' | 'teleport-coordinates' | 'teleport-player' | 'remove-whitelist'
+export type ModeratorPlayerAction = Extract<PlayerAction, 'kick' | 'ban' | 'remove-whitelist'>
+
+const moderatorPlayerActions = new Set<PlayerAction>(['kick', 'ban', 'remove-whitelist'])
+
+export function isModeratorPlayerAction(action: PlayerAction): action is ModeratorPlayerAction {
+  return moderatorPlayerActions.has(action)
+}
+
+export function validateModerationReason(value: unknown): string {
+  const reason = clean(value)
+  if (!reason) throw new Error('A moderation reason is required')
+  return reason
+}
 
 export interface TeleportPosition {
   x: number
@@ -53,8 +66,8 @@ function teleportCoordinate(value: unknown, label: string, maximum: number): num
 export function buildPlayerCommand(username: string, action: PlayerAction, payload: Record<string, unknown> = {}): string {
   const user = quote(username)
   switch (action) {
-    case 'kick': return `kickuser ${user} -r ${quote(payload.reason || 'Removed by an administrator')}`
-    case 'ban': return `banuser ${user} -r ${quote(payload.reason || 'Banned by an administrator')}`
+    case 'kick': return `kickuser ${user} -r ${quote(validateModerationReason(payload.reason))}`
+    case 'ban': return `banuser ${user} -r ${quote(validateModerationReason(payload.reason))}`
     case 'godmode': return `godmodeplayer ${user} -${payload.enabled === false ? 'false' : 'true'}`
     case 'invisible': return `invisibleplayer ${user} -${payload.enabled === false ? 'false' : 'true'}`
     case 'noclip': return `noclip ${user} -${payload.enabled === false ? 'false' : 'true'}`
@@ -88,7 +101,10 @@ export function buildPlayerCommand(username: string, action: PlayerAction, paylo
       }
       return `teleport ${user} ${quote(destination)}`
     }
-    case 'remove-whitelist': return `removeuserfromwhitelist ${user}`
+    case 'remove-whitelist': {
+      validateModerationReason(payload.reason)
+      return `removeuserfromwhitelist ${user}`
+    }
     default: throw new Error('Unknown player action')
   }
 }

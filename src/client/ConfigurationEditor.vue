@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
 import type { SetupStatus } from '@shared/types'
+import { STAFF_CONSOLE_PATH } from '@shared/routes'
 
 type SecretKey =
   | 'DASHBOARD_PASSWORD'
@@ -150,7 +151,7 @@ async function waitForRestart() {
       const status = await response.json() as SetupStatus
       if (response.ok && status.configured && !status.restartRequired) {
         restartMessage.value = 'Dashboard restarted with the updated configuration. Reconnecting…'
-        window.location.assign('/admin')
+        window.location.assign(STAFF_CONSOLE_PATH)
         return
       }
     } catch {
@@ -158,7 +159,7 @@ async function waitForRestart() {
     }
     await new Promise((resolve) => window.setTimeout(resolve, 1_500))
   }
-  restartMessage.value = 'The encrypted update is saved, but the service did not return. Restart the container or service manually, then reopen /admin.'
+  restartMessage.value = `The encrypted update is saved, but the service did not return. Restart the container or service manually, then reopen ${STAFF_CONSOLE_PATH}.`
 }
 
 async function save() {

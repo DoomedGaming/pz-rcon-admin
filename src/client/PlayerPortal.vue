@@ -2,6 +2,7 @@
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import type { PlayerPortalLanding, PlayerPortalOverview, PlayerPortalSession, PlayerSettings, PlayerTheme, SupportRequest, SupportRequestCategory } from '@shared/types'
 import { activeSupportRequestStatuses, supportRequestCategories } from '@shared/support-requests'
+import { STAFF_CONSOLE_PATH } from '@shared/routes'
 import ZomboidMap from './ZomboidMap.vue'
 
 const loading = ref(true)
@@ -425,7 +426,7 @@ onBeforeUnmount(() => {
         <div><strong>{{ brandName }}</strong><small>{{ brandTagline }}</small></div>
       </div>
       <div class="player-portal-actions">
-        <a v-if="portal.canAccessAdmin" class="button outline compact" href="/admin">{{ dashboardRoleLabel }} console</a>
+        <a v-if="portal.canAccessAdmin" class="button outline compact" :href="STAFF_CONSOLE_PATH">{{ dashboardRoleLabel }} console</a>
         <span :class="['status-chip', { online: portal.player?.online }]"><span></span>{{ portal.player?.online ? 'Online now' : 'Offline' }}</span>
         <button class="text-button" type="button" @click="logout">Sign out</button>
       </div>

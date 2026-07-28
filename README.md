@@ -105,7 +105,7 @@ The dashboard and telemetry companion intentionally use the same semantic versio
 
 ## Player portal
 
-The player portal is the default page at `/`. A survivor signs in with the personal Project Zomboid username and password paired with their account. This is **not** the shared server password. The same signed session opens `/admin` after an existing Admin grants that account the Moderator or Admin dashboard role.
+The player portal is the default page at `/`. A survivor signs in with the personal Project Zomboid username and password paired with their account. This is **not** the shared server password. After an existing Admin grants that account the Moderator or Admin dashboard role, the normal console link opens the shared staff route at `/mod`.
 
 RCON cannot validate player accounts. When enabled, the backend retrieves `db/servertest.db` from the configured FTP/FTPS host into a private temporary directory, finds the case-insensitive account in the `whitelist` table, verifies the Build 42 MD5-plus-bcrypt password representation, and immediately removes the database copy. The raw password, stored hash, and database are never returned to the browser or written to dashboard history.
 
@@ -118,15 +118,15 @@ PZ_PLAYER_DB_FTP_PATH=db/servertest.db
 PZ_PLAYER_DB_WORLD=servertest
 ```
 
-The player API derives the username from a signed, HttpOnly session. Every account starts as **User**, which can reach only its own portal data. A **Moderator** can open the admin overview, survivor registry, and moderation actions. An **Admin** can additionally view the audit log and manage dashboard roles, server and world commands, live settings, configuration, and the raw RCON console. Dashboard roles are independent from Project Zomboid's in-game access levels.
+The player API derives the username from a signed, HttpOnly session. Every account starts as **User**, which can reach only its own portal data. A **Moderator** can open the staff overview, survivor registry, and moderation actions. Kick, ban, and whitelist removal require a reason in both the interface and API, and the reason is recorded in the administrator audit log. An **Admin** can additionally view that audit log and manage dashboard roles, server and world commands, live settings, configuration, and the raw RCON console. Dashboard roles are independent from Project Zomboid's in-game access levels.
 
 Signed-in players can open **Request Center** to ask for general help, report that they are stuck, report another survivor, request safehouse assistance, or ask for voice-chat help. A request is private to the account that created it and dashboard staff. Players can view and reply only to their own requests; they never receive RCON or moderation access. A player may have up to five active requests at once. When deep telemetry has a current position for the player, the request stores that location snapshot so staff can review where the problem occurred without exposing another survivor's location.
 
-Moderators and Admins share the **Request queue** in `/admin`. Staff can claim a request, exchange private replies, approve or deny it, mark claimed or approved work completed, or explicitly reopen a denied or completed request. The available states are `Open`, `Claimed`, `Approved`, `Denied`, and `Completed`, with guarded transitions and a single active assignee. Request creation, replies, assignments, and status changes are persisted in `data/dashboard.json` and written to the audit log. The player portal refreshes every 15 seconds and the staff console every 10 seconds, so changes appear during play without a dashboard or game-server restart.
+Moderators and Admins share the **Request queue** in `/mod`. Staff can claim a request, exchange private replies, approve or deny it, mark claimed or approved work completed, or explicitly reopen a denied or completed request. The available states are `Open`, `Claimed`, `Approved`, `Denied`, and `Completed`, with guarded transitions and a single active assignee. Request creation, replies, assignments, and status changes are persisted in `data/dashboard.json` and written to the audit log. The player portal refreshes every 15 seconds and the staff console every 10 seconds, so changes appear during play without a dashboard or game-server restart.
 
 Signed-in players can also open **Settings** from the survivor portal and choose a full interface theme. Green remains the default; Amber, Blue, Violet, and Rose are also available. Each palette changes backgrounds, panels, navigation, borders, text tones, and highlights. The selection is saved per Project Zomboid username in `data/dashboard.json`, applies immediately without a game-server or dashboard restart, and follows moderators or administrators into the control console.
 
-`DASHBOARD_PASSWORD` remains a bootstrap and break-glass credential. Use it to enter `/admin` before the first Project Zomboid account has been promoted, grant that account Admin, then use the normal Project Zomboid login for routine access. Role assignments are stored in `data/dashboard.json` and take effect on the next request.
+`DASHBOARD_PASSWORD` remains a bootstrap and break-glass credential. The unlinked `/admin` route is reserved for this emergency access. Use it before the first Project Zomboid account has been promoted, grant that account Admin, then use the normal Project Zomboid login and `/mod` console route for routine access. Signing out of the console returns to `/` instead of displaying the bootstrap form. Role assignments are stored in `data/dashboard.json` and take effect on the next request. The separate route reduces accidental exposure; the password and role checks remain the actual security boundary.
 
 ## Live settings
 
@@ -185,7 +185,7 @@ The store defaults to `~/.config/pz-rcon-admin/`:
 
 The key and ciphertext are deliberately outside the repository. This protects credentials from accidental commits, source archives, and casual file inspection. Because the key lives on the same machine, an attacker who can read files as the dashboard's operating-system account can decrypt the store; use normal account isolation and disk encryption for that threat.
 
-Open <http://127.0.0.1:5173> for the player portal or <http://127.0.0.1:5173/admin> for administration. Existing `/player` links continue to render the player portal. The API listens on `127.0.0.1:8787` and Vite proxies `/api` during development.
+Open <http://127.0.0.1:5173> for the player portal or <http://127.0.0.1:5173/mod> for the signed-in staff console. The unlinked `/admin` path remains available only for deliberate bootstrap access. Existing `/player` links continue to render the player portal. The API listens on `127.0.0.1:8787` and Vite proxies `/api` during development.
 
 To migrate an existing protected env file without printing its values:
 
@@ -217,7 +217,7 @@ npm run build
 npm start
 ```
 
-The production server serves both the API and built interface from <http://127.0.0.1:8787> by default. The root opens the player portal; administration is at <http://127.0.0.1:8787/admin>.
+The production server serves both the API and built interface from <http://127.0.0.1:8787> by default. The root opens the player portal, the normal staff console is at <http://127.0.0.1:8787/mod>, and the unlinked bootstrap administrator entry remains at `/admin`.
 
 Keep the loopback binding unless the dashboard is placed behind HTTPS. A new instance may bind to a non-loopback address only to serve its token-protected setup flow. The setup form requires a dashboard password before it writes the encrypted configuration; subsequent network-bound starts fail closed if that password cannot be loaded. Use a strong, unique RCON password; RCON grants full server control.
 
@@ -230,7 +230,7 @@ docker compose up -d --build
 docker compose logs dashboard
 ```
 
-Open the one-time setup URL printed by `docker compose logs dashboard` and save the configuration. The container exits and `restart: unless-stopped` starts it again automatically; the setup page waits for the healthy dashboard and opens `/admin`. The same automatic restart occurs after an Admin saves later changes from **Configuration**. Open <http://127.0.0.1:8787> for the player portal or <http://127.0.0.1:8787/admin> for administration. The encrypted configuration, its key, player history, and audit entries are retained in the `zomboid-admin-data` volume when the container is replaced or upgraded.
+Open the one-time setup URL printed by `docker compose logs dashboard` and save the configuration. The container exits and `restart: unless-stopped` starts it again automatically; the setup page waits for the healthy dashboard and opens the deliberate bootstrap route at `/admin`. The same automatic restart occurs after an Admin saves later changes from **Configuration**, returning them to `/mod`. Open <http://127.0.0.1:8787> for the player portal or <http://127.0.0.1:8787/mod> for routine staff access. The encrypted configuration, its key, player history, and audit entries are retained in the `zomboid-admin-data` volume when the container is replaced or upgraded.
 
 ### GitHub Container Registry
 

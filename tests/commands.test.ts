@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { buildDefinedCommand, buildPlayerCommand, buildPlayerTeleportToPositionCommand, validatePlayerActionOutput, validateRawCommand } from '../src/server/commands.js'
+import { buildDefinedCommand, buildPlayerCommand, buildPlayerTeleportToPositionCommand, isModeratorPlayerAction, validatePlayerActionOutput, validateRawCommand } from '../src/server/commands.js'
 
 describe('command builders', () => {
   it('quotes announcement text and removes newline injection', () => {
@@ -11,6 +11,22 @@ describe('command builders', () => {
     expect(buildPlayerCommand('Alice', 'godmode')).toBe('godmodeplayer "Alice" -true')
     expect(buildPlayerCommand('Alice', 'godmode', { enabled: false })).toBe('godmodeplayer "Alice" -false')
     expect(buildPlayerCommand('Alice', 'addxp', { perk: 'Woodwork', amount: 100 })).toBe('addxp "Alice" Woodwork=100 -true')
+  })
+
+  it('requires a reason for every moderator player action', () => {
+    expect(isModeratorPlayerAction('kick')).toBe(true)
+    expect(isModeratorPlayerAction('ban')).toBe(true)
+    expect(isModeratorPlayerAction('remove-whitelist')).toBe(true)
+    expect(isModeratorPlayerAction('godmode')).toBe(false)
+    expect(buildPlayerCommand('Alice', 'kick', { reason: 'Repeated griefing' }))
+      .toBe('kickuser "Alice" -r "Repeated griefing"')
+    expect(buildPlayerCommand('Alice', 'ban', { reason: 'Threats\nand harassment' }))
+      .toBe('banuser "Alice" -r "Threats and harassment"')
+    expect(buildPlayerCommand('Alice', 'remove-whitelist', { reason: 'Access revoked' }))
+      .toBe('removeuserfromwhitelist "Alice"')
+    expect(() => buildPlayerCommand('Alice', 'kick', { reason: '  ' })).toThrow('moderation reason is required')
+    expect(() => buildPlayerCommand('Alice', 'ban')).toThrow('moderation reason is required')
+    expect(() => buildPlayerCommand('Alice', 'remove-whitelist')).toThrow('moderation reason is required')
   })
 
   it('builds coordinate and player teleport commands', () => {

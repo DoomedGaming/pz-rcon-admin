@@ -8,6 +8,17 @@ This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.6.1] - 2026-07-28
+
+### Added
+
+- Added `/mod` as the normal shared Moderator/Admin console route while keeping `/admin` as an unlinked bootstrap and break-glass entry.
+
+### Changed
+
+- Staff logout now returns to the player portal instead of exposing the bootstrap password form.
+- Kick, ban, and whitelist removal now require a reason in both the interface and API, with the reason retained in administrator audit history.
+
 ## [0.6.0] - 2026-07-28
 
 ### Changed
@@ -81,7 +92,8 @@ This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 - Corrected the GitHub Container Registry workflow's image build platform.
 
-[Unreleased]: https://github.com/DoomedGaming/pz-rcon-admin/compare/v0.6.0...HEAD
+[Unreleased]: https://github.com/DoomedGaming/pz-rcon-admin/compare/v0.6.1...HEAD
+[0.6.1]: https://github.com/DoomedGaming/pz-rcon-admin/compare/v0.6.0...v0.6.1
 [0.6.0]: https://github.com/DoomedGaming/pz-rcon-admin/compare/v0.5.3...v0.6.0
 [0.5.3]: https://github.com/DoomedGaming/pz-rcon-admin/compare/v0.5.2...v0.5.3
 [0.5.2]: https://github.com/DoomedGaming/pz-rcon-admin/compare/v0.5.1...v0.5.2

@@ -7,7 +7,7 @@ import { isSupportRequestStatus, normalizeSupportRequestInput, normalizeSupportR
 import { isValidWorldMapTile, worldMapUpstreamTileUrl } from '../shared/world-map.js'
 import { createAuth, createPlayerAuth } from './auth.js'
 import { appConfig } from './config.js'
-import { buildDefinedCommand, buildPlayerCommand, buildPlayerTeleportToPositionCommand, commandDefinitions, validatePlayerActionOutput, validateRawCommand, type PlayerAction } from './commands.js'
+import { buildDefinedCommand, buildPlayerCommand, buildPlayerTeleportToPositionCommand, commandDefinitions, isModeratorPlayerAction, validateModerationReason, validatePlayerActionOutput, validateRawCommand, type PlayerAction } from './commands.js'
 import { parseSandboxLua, summarizeConfig } from './ini.js'
 import { LiveSettingsService, validateLiveSettingOutput } from './live-settings.js'
 import { isPlayerTheme } from '../shared/player-settings.js'
@@ -578,7 +578,11 @@ app.post('/api/players/:username/actions', async (request, response) => {
   try {
     let teleportPosition: ReturnType<typeof currentTeleportPosition>
     const identity = requestDashboardIdentity(request)
-    if (identity.role !== 'admin' && !['kick', 'ban', 'remove-whitelist'].includes(action)) {
+    const payload: Record<string, unknown> = request.body?.payload && typeof request.body.payload === 'object' && !Array.isArray(request.body.payload)
+      ? { ...request.body.payload }
+      : {}
+    const moderationReason = isModeratorPlayerAction(action) ? validateModerationReason(payload.reason) : undefined
+    if (identity.role !== 'admin' && !isModeratorPlayerAction(action)) {
       return response.status(403).json({ error: 'Administrator access required for this player action' })
     }
     if (['ban', 'teleport-coordinates', 'teleport-player'].includes(action) && request.body?.confirm !== username) {
@@ -589,17 +593,17 @@ app.post('/api/players/:username/actions', async (request, response) => {
       if (!source?.online) throw new Error('The survivor must be online before teleporting')
 
       if (action === 'teleport-player') {
-        const destination = store.getPlayer(String(request.body?.payload?.destination ?? ''))
+        const destination = store.getPlayer(String(payload.destination ?? ''))
         if (!destination?.online) throw new Error('The destination survivor must be online')
-        request.body.payload.destination = destination.username
+        payload.destination = destination.username
         teleportPosition = currentTeleportPosition(destination.telemetry)
       }
     }
     const command = teleportPosition
       ? buildPlayerTeleportToPositionCommand(username, teleportPosition)
-      : buildPlayerCommand(username, action, request.body?.payload)
+      : buildPlayerCommand(username, action, payload)
     const output = validatePlayerActionOutput(teleportPosition ? 'teleport-coordinates' : action, await rcon.send(command))
-    store.addAudit({ category: 'player', action, target: username, command: redactCommand(command), success: true })
+    store.addAudit({ category: 'player', action, target: username, command: redactCommand(command), success: true, detail: moderationReason ? `Reason: ${moderationReason}` : undefined })
     response.json({ ok: true, output, teleportMethod: teleportPosition ? 'coordinates' : 'player' })
   } catch (error) {
     store.addAudit({ category: 'player', action: action || 'unknown', target: username, success: false, detail: errorMessage(error) })

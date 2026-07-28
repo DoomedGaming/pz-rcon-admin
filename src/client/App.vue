@@ -3,7 +3,7 @@ import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import type { AuditEntry, CommandDefinition, DashboardRole, DashboardSession, DashboardUser, LiveSettingCategory, LiveSettingsSnapshot, LiveSettingState, Overview, PlayerPortalCommunity, PlayerRecord, PlayerSettings, PlayerTheme, SetupStatus, SupportRequest, SupportRequestCategory, SupportRequestStatus } from '@shared/types'
 import { activeSupportRequestStatuses, supportRequestCategories } from '@shared/support-requests'
 import { PLAYER_XP_PERKS } from '@shared/perks'
-import { isAdminConsolePath } from '@shared/routes'
+import { isBootstrapAdminPath, isStaffConsolePath, PLAYER_PORTAL_PATH } from '@shared/routes'
 import { activityChartScale } from './activity-chart'
 import ConfigurationEditor from './ConfigurationEditor.vue'
 import PlayerPortal from './PlayerPortal.vue'
@@ -11,7 +11,8 @@ import SetupView from './SetupView.vue'
 import ZomboidMap from './ZomboidMap.vue'
 
 type Page = 'overview' | 'players' | 'requests' | 'users' | 'configuration' | 'server' | 'world' | 'settings' | 'mods' | 'console' | 'audit'
-const adminConsoleMode = isAdminConsolePath(window.location.pathname)
+const adminConsoleMode = isStaffConsolePath(window.location.pathname)
+const bootstrapAdminMode = isBootstrapAdminPath(window.location.pathname)
 const setupMode = ref(window.location.pathname === '/setup')
 const setupChecking = ref(true)
 const setupStatus = ref<SetupStatus | null>(null)
@@ -69,7 +70,7 @@ const busy = ref('')
 const announcement = ref('')
 const worldTarget = ref('')
 const hordeCount = ref('25')
-const playerReason = ref('')
+const playerReasons = ref<Record<string, string>>({})
 const itemName = ref('Base.Axe')
 const itemCount = ref('1')
 const perkName = ref('Fitness')
@@ -123,6 +124,10 @@ async function loadSession() {
   sessionUsername.value = session.username ?? ''
   sessionRole.value = session.role ?? 'user'
   sessionMethod.value = session.method
+  if (!session.authenticated && !bootstrapAdminMode) {
+    window.location.replace(PLAYER_PORTAL_PATH)
+    return
+  }
   if (session.method === 'player') {
     try {
       playerTheme.value = (await api<PlayerSettings>('/api/player/settings')).theme
@@ -149,17 +154,11 @@ async function login() {
 
 async function logout() {
   await api('/api/logout', { method: 'POST', body: '{}' })
-  authenticated.value = false
-  identityAuthenticated.value = false
-  sessionUsername.value = ''
-  sessionRole.value = 'user'
-  sessionMethod.value = undefined
-  playerTheme.value = 'green'
-  overview.value = null
+  window.location.replace(PLAYER_PORTAL_PATH)
 }
 
 function goToPlayerPortal() {
-  window.location.assign('/')
+  window.location.assign(PLAYER_PORTAL_PATH)
 }
 
 async function loadAll(silent = false) {
@@ -393,6 +392,7 @@ async function playerAction(username: string, action: string, payload: Record<st
     } else {
       notify(`${action} command completed for ${username}`)
     }
+    if (['kick', 'ban', 'remove-whitelist'].includes(action)) playerReasons.value[username] = ''
     consoleLines.value.unshift({ at: new Date().toISOString(), command: `${action} ${username}`, output: result.output })
     await loadAll(true)
     return true
@@ -633,7 +633,7 @@ onBeforeUnmount(() => {
         <div><strong>{{ brandName }}</strong><small>Server control</small></div>
       </div>
 
-      <nav aria-label="Admin sections">
+      <nav aria-label="Staff console sections">
         <button v-for="item in navItems" :key="item.id" :class="['nav-item', { active: page === item.id }]" :aria-label="item.label" @click="page = item.id">
           <span :class="['nav-icon', `icon-${item.icon}`]" aria-hidden="true"></span>
           <span>{{ item.label }}</span>
@@ -841,7 +841,7 @@ onBeforeUnmount(() => {
                         <small class="vehicle-key-help">The key ID belongs to one specific vehicle; it is not an item ID such as Base.CarKey. Have an online survivor sit in the target vehicle and its key ID will appear here after the next telemetry snapshot.</small>
                       </section>
                       </template>
-                      <section class="player-detail-section danger-zone"><h3>Moderation</h3><input v-model="playerReason" :aria-label="`Moderation reason for ${playerItem.username}`" placeholder="Reason shown in logs" /><div><button class="button outline" :disabled="busy.startsWith('player-')" @click="playerAction(playerItem.username, 'kick', { reason: playerReason })">Kick</button><button class="button danger-button" :disabled="busy.startsWith('player-')" @click="playerAction(playerItem.username, 'ban', { reason: playerReason })">Ban survivor</button><button class="button outline" :disabled="busy.startsWith('player-')" @click="playerAction(playerItem.username, 'remove-whitelist')">Remove whitelist</button></div></section>
+                      <section class="player-detail-section danger-zone"><h3>Moderation</h3><input v-model="playerReasons[playerItem.username]" :aria-label="`Moderation reason for ${playerItem.username}`" aria-required="true" maxlength="300" placeholder="Reason required and recorded in the audit log" required /><div><button class="button outline" :disabled="busy.startsWith('player-') || !playerReasons[playerItem.username]?.trim()" @click="playerAction(playerItem.username, 'kick', { reason: playerReasons[playerItem.username] })">Kick</button><button class="button danger-button" :disabled="busy.startsWith('player-') || !playerReasons[playerItem.username]?.trim()" @click="playerAction(playerItem.username, 'ban', { reason: playerReasons[playerItem.username] })">Ban survivor</button><button class="button outline" :disabled="busy.startsWith('player-') || !playerReasons[playerItem.username]?.trim()" @click="playerAction(playerItem.username, 'remove-whitelist', { reason: playerReasons[playerItem.username] })">Remove whitelist</button></div></section>
                     </div>
                   </div>
                 </section>
@@ -1056,7 +1056,7 @@ onBeforeUnmount(() => {
           <div class="section-intro"><div><p class="eyebrow">Local administrator history</p><h2>Audit log</h2><p>Actions are recorded locally with timestamps, targets, outcomes, and redacted command text.</p></div><button class="button outline" @click="loadAll()">Refresh log</button></div>
           <article class="panel table-panel">
             <div v-if="!audit.length" class="empty-state">No actions recorded yet.</div>
-            <div v-else class="data-table-wrap"><table class="data-table audit-table"><thead><tr><th>Time</th><th>Result</th><th>Category</th><th>Action</th><th>Target / command</th></tr></thead><tbody><tr v-for="entry in audit" :key="entry.id"><td>{{ new Date(entry.at).toLocaleString() }}</td><td><span :class="['result-chip', { failed: !entry.success }]">{{ entry.success ? 'SUCCESS' : 'FAILED' }}</span></td><td>{{ entry.category }}</td><td><strong>{{ entry.action }}</strong></td><td><code>{{ entry.target || entry.command || entry.detail || '—' }}</code></td></tr></tbody></table></div>
+            <div v-else class="data-table-wrap"><table class="data-table audit-table"><thead><tr><th>Time</th><th>Result</th><th>Category</th><th>Action</th><th>Target / command / detail</th></tr></thead><tbody><tr v-for="entry in audit" :key="entry.id"><td>{{ new Date(entry.at).toLocaleString() }}</td><td><span :class="['result-chip', { failed: !entry.success }]">{{ entry.success ? 'SUCCESS' : 'FAILED' }}</span></td><td>{{ entry.category }}</td><td><strong>{{ entry.action }}</strong></td><td><code>{{ [entry.target, entry.command, entry.detail].filter(Boolean).join(' · ') || '—' }}</code></td></tr></tbody></table></div>
           </article>
         </template>
       </section>
