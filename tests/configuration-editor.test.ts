@@ -16,6 +16,7 @@ function configured() {
     PZ_PLAYER_AUTH_ENABLED: 'true',
     PZ_PLAYER_SESSION_SECRET: 'player-session-secret-at-least-32-characters',
     PZ_DISCORD_MOD_WEBHOOK_URL: 'https://discord.com/api/webhooks/123456789012345678/abcdefghijklmnopqrstuvwxyz_123456',
+    PZ_ADMIN_PUBLIC_URL: 'https://pz.example.test',
   })
 }
 
@@ -25,6 +26,7 @@ describe('secure configuration editor', () => {
 
     expect(state.values.PZ_RCON_HOST).toBe('old.example.test')
     expect(state.values.PZ_RCON_POLL_SECONDS).toBe('15')
+    expect(state.values.PZ_ADMIN_PUBLIC_URL).toBe('https://pz.example.test/')
     expect(state.secretsConfigured).toMatchObject({
       DASHBOARD_PASSWORD: true,
       PZ_RCON_PASSWORD: true,

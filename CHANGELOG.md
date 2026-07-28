@@ -8,6 +8,11 @@ This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added
+
+- Discord Request Center notifications now link directly to the matching `/mod` request dialog.
+- Request Center fields now show their minimum lengths, live character progress, and when each requirement is met.
+
 ## [0.7.0] - 2026-07-28
 
 ### Added

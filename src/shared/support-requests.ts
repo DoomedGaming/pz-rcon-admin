@@ -1,5 +1,10 @@
 import type { SupportRequestCategory, SupportRequestStatus } from './types.js'
 
+export const SUPPORT_REQUEST_SUBJECT_MIN_LENGTH = 3
+export const SUPPORT_REQUEST_SUBJECT_MAX_LENGTH = 100
+export const SUPPORT_REQUEST_DETAIL_MIN_LENGTH = 10
+export const SUPPORT_REQUEST_DETAIL_MAX_LENGTH = 2_000
+
 export const supportRequestCategories: Array<{
   id: SupportRequestCategory
   label: string
@@ -48,8 +53,8 @@ export function normalizeSupportRequestInput(input: unknown): {
   if (/[\u0000-\u001F\u007F]/.test(targetUsername)) throw new Error(`${definition.targetLabel ?? 'Related username'} contains unsupported characters`)
   return {
     category: body.category,
-    subject: cleanText(body.subject, 'Subject', 3, 100),
-    detail: cleanText(body.detail, 'Request details', 10, 2_000),
+    subject: cleanText(body.subject, 'Subject', SUPPORT_REQUEST_SUBJECT_MIN_LENGTH, SUPPORT_REQUEST_SUBJECT_MAX_LENGTH),
+    detail: cleanText(body.detail, 'Request details', SUPPORT_REQUEST_DETAIL_MIN_LENGTH, SUPPORT_REQUEST_DETAIL_MAX_LENGTH),
     ...(targetUsername ? { targetUsername } : {}),
   }
 }

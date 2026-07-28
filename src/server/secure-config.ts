@@ -3,6 +3,7 @@ import { chmodSync, existsSync, mkdirSync, readFileSync, renameSync, writeFileSy
 import { homedir } from 'node:os'
 import { join, resolve } from 'node:path'
 import { normalizeDiscordWebhookUrl } from './discord-moderation.js'
+import { normalizePublicAdminUrl } from '../shared/routes.js'
 
 export const SECURE_CONFIG_KEYS = [
   'HOST',
@@ -48,6 +49,7 @@ export const SECURE_CONFIG_KEYS = [
   'PZ_PLAYER_RESTART_SCHEDULE',
   'PZ_PLAYER_ANNOUNCEMENT',
   'PZ_DISCORD_MOD_WEBHOOK_URL',
+  'PZ_ADMIN_PUBLIC_URL',
   'PZ_PROVIDER_NAME',
   'PZ_PROVIDER_URL',
   'PZ_SETUP_PUBLIC_URL',
@@ -122,6 +124,11 @@ export function buildInitialSecureConfig(value: unknown): SecureConfig {
   }
   if (config.PZ_DISCORD_MOD_WEBHOOK_URL) {
     config.PZ_DISCORD_MOD_WEBHOOK_URL = normalizeDiscordWebhookUrl(config.PZ_DISCORD_MOD_WEBHOOK_URL)
+    const adminPublicUrl = normalizePublicAdminUrl(config.PZ_ADMIN_PUBLIC_URL)
+    if (!adminPublicUrl) {
+      throw new Error('Public Admin URL is required when Discord moderator notifications are enabled')
+    }
+    config.PZ_ADMIN_PUBLIC_URL = adminPublicUrl
   }
 
   config.DASHBOARD_SESSION_SECRET ||= randomBytes(32).toString('base64url')

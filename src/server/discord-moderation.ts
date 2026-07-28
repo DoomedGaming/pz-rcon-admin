@@ -1,4 +1,5 @@
 import type { SupportRequest } from '../shared/types.js'
+import { buildStaffRequestUrl } from '../shared/routes.js'
 import type { ModeratorPlayerAction } from './commands.js'
 
 const DISCORD_EMBED_COLOR = 0xa7b46a
@@ -8,6 +9,7 @@ type DiscordField = { name: string; value: string; inline?: boolean }
 
 interface DiscordEmbed {
   title: string
+  url?: string
   description?: string
   color: number
   fields: DiscordField[]
@@ -73,7 +75,11 @@ function requestFields(request: SupportRequest): DiscordField[] {
   return fields
 }
 
-export function buildDiscordModerationPayload(notification: ModerationNotification, now = new Date()): DiscordWebhookPayload {
+export function buildDiscordModerationPayload(
+  notification: ModerationNotification,
+  now = new Date(),
+  publicBaseUrl?: string,
+): DiscordWebhookPayload {
   const embed: DiscordEmbed = {
     title: '',
     color: DISCORD_EMBED_COLOR,
@@ -119,6 +125,14 @@ export function buildDiscordModerationPayload(notification: ModerationNotificati
       break
   }
 
+  if ('request' in notification) {
+    const requestUrl = buildStaffRequestUrl(publicBaseUrl, notification.request.id)
+    if (requestUrl) {
+      embed.url = requestUrl
+      embed.fields.push({ name: 'Open request', value: `[Open this request in PZ Admin](${requestUrl})` })
+    }
+  }
+
   return {
     username: 'PZ Admin Notifications',
     allowed_mentions: { parse: [] },
@@ -147,7 +161,11 @@ export class DiscordModerationNotifier {
   readonly configured: boolean
   private readonly webhookUrl?: string
 
-  constructor(webhookUrl: string | undefined, private readonly fetchImplementation: FetchImplementation = fetch) {
+  constructor(
+    webhookUrl: string | undefined,
+    private readonly adminPublicUrl: string | undefined,
+    private readonly fetchImplementation: FetchImplementation = fetch,
+  ) {
     this.webhookUrl = webhookUrl ? normalizeDiscordWebhookUrl(webhookUrl) : undefined
     this.configured = Boolean(this.webhookUrl)
   }
@@ -159,7 +177,7 @@ export class DiscordModerationNotifier {
     const response = await this.fetchImplementation(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(buildDiscordModerationPayload(notification)),
+      body: JSON.stringify(buildDiscordModerationPayload(notification, new Date(), this.adminPublicUrl)),
       signal: AbortSignal.timeout(5_000),
     })
     if (!response.ok) throw new Error(`Discord returned HTTP ${response.status}`)

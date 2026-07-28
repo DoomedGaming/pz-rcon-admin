@@ -3,7 +3,14 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { DashboardStore } from '../src/server/store.js'
-import { normalizeSupportRequestInput, normalizeSupportRequestMessage } from '../src/shared/support-requests.js'
+import {
+  normalizeSupportRequestInput,
+  normalizeSupportRequestMessage,
+  SUPPORT_REQUEST_DETAIL_MAX_LENGTH,
+  SUPPORT_REQUEST_DETAIL_MIN_LENGTH,
+  SUPPORT_REQUEST_SUBJECT_MAX_LENGTH,
+  SUPPORT_REQUEST_SUBJECT_MIN_LENGTH,
+} from '../src/shared/support-requests.js'
 
 describe('support request validation', () => {
   it('accepts only allowlisted categories and requires a player-report target', () => {
@@ -22,6 +29,10 @@ describe('support request validation', () => {
   })
 
   it('bounds user-controlled request and comment text', () => {
+    expect({
+      subject: [SUPPORT_REQUEST_SUBJECT_MIN_LENGTH, SUPPORT_REQUEST_SUBJECT_MAX_LENGTH],
+      detail: [SUPPORT_REQUEST_DETAIL_MIN_LENGTH, SUPPORT_REQUEST_DETAIL_MAX_LENGTH],
+    }).toEqual({ subject: [3, 100], detail: [10, 2_000] })
     expect(normalizeSupportRequestMessage('  Thanks for checking.  ')).toBe('Thanks for checking.')
     expect(() => normalizeSupportRequestMessage('')).toThrow('at least 1')
     expect(() => normalizeSupportRequestInput({ category: 'help', subject: 'Hi', detail: 'Long enough request details.' })).toThrow('at least 3')

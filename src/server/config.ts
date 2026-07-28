@@ -2,6 +2,7 @@ import { existsSync, readFileSync } from 'node:fs'
 import { loadEnvFile } from 'node:process'
 import { readIni, summarizeConfig } from './ini.js'
 import { buildPlayerPortalCommunity, publicHttpUrl, publicText } from './player-portal.js'
+import { normalizePublicAdminUrl } from '../shared/routes.js'
 import { applySecureConfig } from './secure-config.js'
 import { assertStartupSecurity } from './startup-security.js'
 
@@ -95,6 +96,7 @@ export const appConfig = {
     url: publicHttpUrl(process.env.PZ_PROVIDER_URL || legacyGportalUrl),
   },
   discordModerationWebhookUrl: process.env.PZ_DISCORD_MOD_WEBHOOK_URL || '',
+  adminPublicUrl: normalizePublicAdminUrl(process.env.PZ_ADMIN_PUBLIC_URL),
   dataPath: process.env.DATA_PATH || 'data/dashboard.json',
   configSummary,
   sandboxText: process.env.PZ_SANDBOX_PATH && existsSync(process.env.PZ_SANDBOX_PATH)

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import type { AuditEntry, CommandDefinition, DashboardRole, DashboardSession, DashboardUser, LiveSettingCategory, LiveSettingsSnapshot, LiveSettingState, Overview, PlayerPortalCommunity, PlayerRecord, PlayerSettings, PlayerTheme, SetupStatus, SupportRequest, SupportRequestCategory, SupportRequestStatus } from '@shared/types'
 import { activeSupportRequestStatuses, supportRequestCategories } from '@shared/support-requests'
 import { PLAYER_XP_PERKS } from '@shared/perks'
@@ -61,6 +61,8 @@ const liveSettingsWarning = ref('')
 const liveSettingsRefreshedAt = ref('')
 const supportRequests = ref<SupportRequest[]>([])
 const selectedRequestId = ref<string | null>(null)
+const requestDialogOpen = ref(false)
+const requestDialog = ref<HTMLElement | null>(null)
 const requestFilter = ref<'active' | 'all'>('active')
 const staffRequestReply = ref('')
 const sandbox = ref<Record<string, string | number | boolean>>({})
@@ -90,6 +92,7 @@ const consoleLines = ref<Array<{ at: string; command: string; output: string; er
 const godModeEnabled = ref<Record<string, boolean>>({})
 let refreshTimer: number | undefined
 let toastTimer: number | undefined
+let pendingRequestDeepLink = new URLSearchParams(window.location.search).get('request')?.trim().slice(0, 128) || undefined
 
 const isAdmin = computed(() => sessionRole.value === 'admin')
 const navItems = computed(() => allNavItems.filter((item) => !item.adminOnly || isAdmin.value))
@@ -180,7 +183,21 @@ async function loadAll(silent = false) {
     audit.value = nextAudit
     sandbox.value = config.sandbox
     supportRequests.value = nextRequests
-    if (!selectedRequestId.value && nextRequests.length) {
+    if (pendingRequestDeepLink) {
+      const linkedRequest = nextRequests.find((request) => request.id === pendingRequestDeepLink)
+      if (linkedRequest) {
+        page.value = 'requests'
+        requestFilter.value = 'all'
+        selectedRequestId.value = linkedRequest.id
+        requestDialogOpen.value = true
+        await nextTick()
+        requestDialog.value?.focus()
+      } else {
+        notify('The linked support request could not be found.', true)
+        clearRequestDeepLink()
+      }
+      pendingRequestDeepLink = undefined
+    } else if (!selectedRequestId.value && nextRequests.length) {
       selectedRequestId.value = nextRequests.find((request) => activeSupportRequestStatuses.includes(request.status))?.id ?? nextRequests[0].id
     }
   } catch (error) {
@@ -254,8 +271,24 @@ async function addStaffRequestMessage(request: SupportRequest) {
 }
 
 function openRequestSurvivor(request: SupportRequest) {
+  closeRequestDialog()
   page.value = 'players'
   expandedPlayerUsername.value = request.createdBy
+}
+
+function clearRequestDeepLink() {
+  const url = new URL(window.location.href)
+  url.searchParams.delete('request')
+  window.history.replaceState({}, '', `${url.pathname}${url.search}${url.hash}`)
+}
+
+function closeRequestDialog() {
+  requestDialogOpen.value = false
+  clearRequestDeepLink()
+}
+
+function handleRequestDialogKeydown(event: KeyboardEvent) {
+  if (event.key === 'Escape' && requestDialogOpen.value) closeRequestDialog()
 }
 
 function navCount(item: { id: Page }): number {
@@ -559,12 +592,14 @@ const liveSettingCategories = computed(() => {
 })
 
 watch(page, (nextPage) => {
+  if (nextPage !== 'requests' && requestDialogOpen.value) closeRequestDialog()
   if (nextPage === 'users') void loadDashboardUsers()
   if (nextPage === 'settings') void loadLiveSettings()
   if (nextPage === 'audit') void loadAll(true)
 })
 
 onMounted(async () => {
+  window.addEventListener('keydown', handleRequestDialogKeydown)
   try {
     setupStatus.value = await api<SetupStatus>('/api/setup/status')
     setupMode.value = setupMode.value || setupStatus.value.required
@@ -581,6 +616,7 @@ onMounted(async () => {
 })
 
 onBeforeUnmount(() => {
+  window.removeEventListener('keydown', handleRequestDialogKeydown)
   window.clearInterval(refreshTimer)
   window.clearTimeout(toastTimer)
 })
@@ -872,10 +908,20 @@ onBeforeUnmount(() => {
               </div>
             </section>
 
-            <article v-if="selectedSupportRequest" class="panel staff-request-detail">
+            <div v-if="requestDialogOpen" class="request-dialog-backdrop" aria-hidden="true" @click="closeRequestDialog"></div>
+            <article
+              v-if="selectedSupportRequest"
+              ref="requestDialog"
+              :class="['panel', 'staff-request-detail', { 'request-dialog': requestDialogOpen }]"
+              :role="requestDialogOpen ? 'dialog' : undefined"
+              :aria-modal="requestDialogOpen ? 'true' : undefined"
+              :aria-labelledby="requestDialogOpen ? 'staff-request-dialog-title' : undefined"
+              :tabindex="requestDialogOpen ? -1 : undefined"
+            >
               <header>
-                <div><p class="eyebrow">{{ supportRequestCategoryLabel(selectedSupportRequest.category) }}</p><h2>{{ selectedSupportRequest.subject }}</h2><p>Submitted by <strong>{{ selectedSupportRequest.createdBy }}</strong> · updated {{ relativeTime(selectedSupportRequest.updatedAt) }}</p></div>
+                <div><p class="eyebrow">{{ supportRequestCategoryLabel(selectedSupportRequest.category) }}</p><h2 id="staff-request-dialog-title">{{ selectedSupportRequest.subject }}</h2><p>Submitted by <strong>{{ selectedSupportRequest.createdBy }}</strong> · updated {{ relativeTime(selectedSupportRequest.updatedAt) }}</p></div>
                 <b :class="['request-status', selectedSupportRequest.status]">{{ supportRequestStatusLabel(selectedSupportRequest.status) }}</b>
+                <button v-if="requestDialogOpen" class="request-dialog-close" type="button" aria-label="Close request dialog" @click="closeRequestDialog">×</button>
               </header>
 
               <p class="staff-request-description">{{ selectedSupportRequest.detail }}</p>

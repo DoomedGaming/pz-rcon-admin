@@ -28,7 +28,7 @@ const auth = createAuth(appConfig.dashboardPassword, appConfig.sessionSecret, ap
 const playerAuth = createPlayerAuth(appConfig.playerSessionSecret, appConfig.secureCookie)
 const playerCredentialVerifier = new PzPlayerCredentialVerifier(appConfig.playerAuth)
 const liveSettings = new LiveSettingsService(appConfig.configSummary.values, store.getLiveSettingOverrides())
-const discordModeration = new DiscordModerationNotifier(appConfig.discordModerationWebhookUrl)
+const discordModeration = new DiscordModerationNotifier(appConfig.discordModerationWebhookUrl, appConfig.adminPublicUrl)
 const loginAttempts = new Map<string, { count: number; resetAt: number }>()
 const playerLoginAttempts = new Map<string, { count: number; resetAt: number }>()
 const telemetryBridge = new TelemetryFtpBridge(appConfig.telemetryFtp, (snapshot, observedAt) => {

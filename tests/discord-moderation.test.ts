@@ -28,10 +28,19 @@ describe('Discord moderation notifications', () => {
   })
 
   it('builds scoped request and moderator-action embeds without allowing mentions', () => {
-    const created = buildDiscordModerationPayload({ kind: 'request-created', request }, new Date('2026-07-28T20:01:00.000Z'))
+    const created = buildDiscordModerationPayload(
+      { kind: 'request-created', request },
+      new Date('2026-07-28T20:01:00.000Z'),
+      'https://pz.example.test',
+    )
     expect(created.allowed_mentions.parse).toEqual([])
     expect(created.embeds[0]).toMatchObject({ title: 'New support request', timestamp: '2026-07-28T20:01:00.000Z' })
     expect(created.embeds[0].description).toContain('\\*\\*markdown\\*\\*')
+    expect(created.embeds[0].url).toBe('https://pz.example.test/mod?request=request-123')
+    expect(created.embeds[0].fields).toContainEqual({
+      name: 'Open request',
+      value: '[Open this request in PZ Admin](https://pz.example.test/mod?request=request-123)',
+    })
 
     const action = buildDiscordModerationPayload({
       kind: 'player-action',
@@ -59,6 +68,7 @@ describe('Discord moderation notifications', () => {
     })
     const notifier = new DiscordModerationNotifier(
       'https://discord.com/api/webhooks/123456789012345678/abcdefghijklmnopqrstuvwxyz_123456',
+      'https://pz.example.test',
       fetchImplementation,
     )
 
@@ -68,7 +78,7 @@ describe('Discord moderation notifications', () => {
     expect(requestedInit?.method).toBe('POST')
     expect(JSON.parse(String(requestedInit?.body))).toMatchObject({ allowed_mentions: { parse: [] } })
 
-    await expect(new DiscordModerationNotifier(undefined, fetchImplementation).send({ kind: 'request-created', request })).resolves.toBe(false)
+    await expect(new DiscordModerationNotifier(undefined, undefined, fetchImplementation).send({ kind: 'request-created', request })).resolves.toBe(false)
     expect(fetchImplementation).toHaveBeenCalledOnce()
   })
 })

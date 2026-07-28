@@ -63,6 +63,7 @@ const form = ref({
   providerName: '',
   providerUrl: '',
   discordModWebhookUrl: '',
+  adminPublicUrl: '',
 })
 const clearSecrets = ref<SecretKey[]>([])
 const secretsConfigured = ref<Record<SecretKey, boolean>>({
@@ -127,6 +128,7 @@ function hydrate(state: ConfigurationState) {
   form.value.announcement = value(values, 'PZ_PLAYER_ANNOUNCEMENT')
   form.value.providerName = value(values, 'PZ_PROVIDER_NAME')
   form.value.providerUrl = value(values, 'PZ_PROVIDER_URL')
+  form.value.adminPublicUrl = value(values, 'PZ_ADMIN_PUBLIC_URL')
   saved.value = state.restartScheduled
 }
 
@@ -179,6 +181,10 @@ async function save() {
     error.value = 'Enter the RCON password because it is not present in the encrypted configuration.'
     return
   }
+  if ((secretsConfigured.value.PZ_DISCORD_MOD_WEBHOOK_URL || form.value.discordModWebhookUrl) && !form.value.adminPublicUrl.trim()) {
+    error.value = 'Enter the public Admin URL so Discord can link to each request.'
+    return
+  }
 
   const config: Record<string, string> = {
     DASHBOARD_SECURE_COOKIE: String(form.value.secureCookie),
@@ -215,6 +221,7 @@ async function save() {
     PZ_PLAYER_ANNOUNCEMENT: form.value.announcement,
     PZ_PROVIDER_NAME: form.value.providerName,
     PZ_PROVIDER_URL: form.value.providerUrl,
+    PZ_ADMIN_PUBLIC_URL: form.value.adminPublicUrl,
   }
   if (form.value.dashboardPassword) config.DASHBOARD_PASSWORD = form.value.dashboardPassword
   if (form.value.dashboardSessionSecret) config.DASHBOARD_SESSION_SECRET = form.value.dashboardSessionSecret
@@ -280,6 +287,7 @@ onMounted(() => void load())
 
       <fieldset>
         <legend>Discord moderator notifications</legend>
+        <label class="wide">Public Admin URL <small>Required with a webhook to build request links, for example https://pz.example.com.</small><input v-model="form.adminPublicUrl" type="url" placeholder="https://pz.example.com" :required="secretsConfigured.PZ_DISCORD_MOD_WEBHOOK_URL || Boolean(form.discordModWebhookUrl)" /></label>
         <label class="wide">New channel webhook URL <small>{{ configuredHint('PZ_DISCORD_MOD_WEBHOOK_URL', 'Enter a replacement or leave blank to keep notifications active.') }}</small><input v-model="form.discordModWebhookUrl" type="password" autocomplete="new-password" :disabled="clearSecrets.includes('PZ_DISCORD_MOD_WEBHOOK_URL')" /></label>
         <label class="check wide"><input v-model="clearSecrets" type="checkbox" value="PZ_DISCORD_MOD_WEBHOOK_URL" /> Disable Discord moderator notifications and remove the stored webhook</label>
         <p class="configuration-note wide">This sends only new Request Center activity, staff request actions, and successful kick, ban, or whitelist-removal actions. It does not mirror the administrator audit log. Webhook messages suppress all Discord mentions.</p>

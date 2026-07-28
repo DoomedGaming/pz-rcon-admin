@@ -95,4 +95,17 @@ describe('encrypted secure configuration', () => {
       PZ_DISCORD_MOD_WEBHOOK_URL: 'https://discord.com/channels/1069116248417386536/1531752683621584946',
     })).toThrow('channel webhook URL')
   })
+
+  it('requires and normalizes a public Admin URL with the Discord webhook', () => {
+    const base = {
+      DASHBOARD_PASSWORD: 'a-long-dashboard-password',
+      PZ_RCON_HOST: '127.0.0.1',
+      PZ_RCON_PORT: 27015,
+      PZ_RCON_PASSWORD: 'a-rcon-password',
+      PZ_DISCORD_MOD_WEBHOOK_URL: 'https://discord.com/api/webhooks/123456789012345678/abcdefghijklmnopqrstuvwxyz_123456',
+    }
+    expect(() => buildInitialSecureConfig(base)).toThrow('Public Admin URL is required')
+    expect(buildInitialSecureConfig({ ...base, PZ_ADMIN_PUBLIC_URL: 'https://pz.example.test/old/path?query=true' }).PZ_ADMIN_PUBLIC_URL)
+      .toBe('https://pz.example.test/')
+  })
 })

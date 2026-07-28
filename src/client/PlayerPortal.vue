@@ -1,7 +1,14 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import type { PlayerPortalLanding, PlayerPortalOverview, PlayerPortalSession, PlayerSettings, PlayerTheme, SupportRequest, SupportRequestCategory } from '@shared/types'
-import { activeSupportRequestStatuses, supportRequestCategories } from '@shared/support-requests'
+import {
+  activeSupportRequestStatuses,
+  SUPPORT_REQUEST_DETAIL_MAX_LENGTH,
+  SUPPORT_REQUEST_DETAIL_MIN_LENGTH,
+  SUPPORT_REQUEST_SUBJECT_MAX_LENGTH,
+  SUPPORT_REQUEST_SUBJECT_MIN_LENGTH,
+  supportRequestCategories,
+} from '@shared/support-requests'
 import { STAFF_CONSOLE_PATH } from '@shared/routes'
 import ZomboidMap from './ZomboidMap.vue'
 
@@ -156,6 +163,10 @@ function requestLocationLabel(request: SupportRequest): string {
 }
 
 async function createSupportRequest() {
+  if (!canSubmitSupportRequest.value) {
+    showRequestNotice(`Subject must be at least ${SUPPORT_REQUEST_SUBJECT_MIN_LENGTH} characters and request details at least ${SUPPORT_REQUEST_DETAIL_MIN_LENGTH} characters.`, true)
+    return
+  }
   requestBusy.value = 'create'
   try {
     const created = await api<SupportRequest>('/api/player/requests', {
@@ -256,6 +267,13 @@ function relativeTime(value?: string): string {
   return `${Math.floor(seconds / 86400)}d ago`
 }
 
+function requestLengthProgress(current: number, minimum: number, maximum: number): string {
+  const remaining = Math.max(0, minimum - current)
+  return remaining
+    ? `${current} / ${maximum} characters · ${remaining} more required`
+    : `${current} / ${maximum} characters · minimum met`
+}
+
 const developedPerks = computed(() => Object.entries(portal.value?.player?.telemetry?.perks ?? {})
   .filter(([, level]) => level > 0)
   .sort(([leftName, leftLevel], [rightName, rightLevel]) => rightLevel - leftLevel || leftName.localeCompare(rightName)))
@@ -263,6 +281,12 @@ const developedPerks = computed(() => Object.entries(portal.value?.player?.telem
 const currentServer = computed(() => portal.value?.server ?? landing.value?.server)
 const activeRequestCount = computed(() => supportRequests.value.filter((request) => activeSupportRequestStatuses.includes(request.status)).length)
 const selectedRequestCategory = computed(() => supportRequestCategories.find((category) => category.id === requestForm.value.category)!)
+const requestSubjectLength = computed(() => requestForm.value.subject.trim().length)
+const requestDetailLength = computed(() => requestForm.value.detail.trim().length)
+const canSubmitSupportRequest = computed(() => (
+  requestSubjectLength.value >= SUPPORT_REQUEST_SUBJECT_MIN_LENGTH
+  && requestDetailLength.value >= SUPPORT_REQUEST_DETAIL_MIN_LENGTH
+))
 const currentCommunity = computed(() => portal.value?.community ?? landing.value?.community)
 const brandName = computed(() => currentCommunity.value?.name ?? 'Project Zomboid')
 const brandInitials = computed(() => currentCommunity.value?.initials ?? 'PZ')
@@ -566,16 +590,43 @@ onBeforeUnmount(() => {
             ><strong>{{ category.label }}</strong><small>{{ category.description }}</small></button>
           </div>
 
-          <label>Subject<input v-model="requestForm.subject" maxlength="100" required placeholder="Short summary" /></label>
+          <label for="request-subject">
+            <span class="request-field-heading"><span>Subject</span><small>{{ SUPPORT_REQUEST_SUBJECT_MIN_LENGTH }}–{{ SUPPORT_REQUEST_SUBJECT_MAX_LENGTH }} characters</small></span>
+            <input
+              id="request-subject"
+              v-model="requestForm.subject"
+              :minlength="SUPPORT_REQUEST_SUBJECT_MIN_LENGTH"
+              :maxlength="SUPPORT_REQUEST_SUBJECT_MAX_LENGTH"
+              required
+              placeholder="Short summary"
+              aria-describedby="request-subject-progress"
+              :aria-invalid="requestSubjectLength > 0 && requestSubjectLength < SUPPORT_REQUEST_SUBJECT_MIN_LENGTH ? 'true' : undefined"
+            />
+            <span id="request-subject-progress" :class="['request-field-progress', { valid: requestSubjectLength >= SUPPORT_REQUEST_SUBJECT_MIN_LENGTH }]" aria-live="polite">{{ requestLengthProgress(requestSubjectLength, SUPPORT_REQUEST_SUBJECT_MIN_LENGTH, SUPPORT_REQUEST_SUBJECT_MAX_LENGTH) }}</span>
+          </label>
           <label v-if="selectedRequestCategory.targetLabel">{{ selectedRequestCategory.targetLabel }}<input v-model="requestForm.targetUsername" maxlength="64" :required="selectedRequestCategory.targetRequired" placeholder="Exact username if known" /></label>
-          <label>Request details<textarea v-model="requestForm.detail" rows="6" maxlength="2000" required placeholder="Explain what happened and what you need from staff."></textarea></label>
+          <label for="request-detail">
+            <span class="request-field-heading"><span>Request details</span><small>{{ SUPPORT_REQUEST_DETAIL_MIN_LENGTH }}–{{ SUPPORT_REQUEST_DETAIL_MAX_LENGTH }} characters</small></span>
+            <textarea
+              id="request-detail"
+              v-model="requestForm.detail"
+              rows="6"
+              :minlength="SUPPORT_REQUEST_DETAIL_MIN_LENGTH"
+              :maxlength="SUPPORT_REQUEST_DETAIL_MAX_LENGTH"
+              required
+              placeholder="Explain what happened and what you need from staff."
+              aria-describedby="request-detail-progress"
+              :aria-invalid="requestDetailLength > 0 && requestDetailLength < SUPPORT_REQUEST_DETAIL_MIN_LENGTH ? 'true' : undefined"
+            ></textarea>
+            <span id="request-detail-progress" :class="['request-field-progress', { valid: requestDetailLength >= SUPPORT_REQUEST_DETAIL_MIN_LENGTH }]" aria-live="polite">{{ requestLengthProgress(requestDetailLength, SUPPORT_REQUEST_DETAIL_MIN_LENGTH, SUPPORT_REQUEST_DETAIL_MAX_LENGTH) }}</span>
+          </label>
 
           <div v-if="requestForm.category === 'unstuck'" class="request-location-preview">
             <span>⌖</span>
             <div><strong>Latest location will be attached</strong><small>{{ portal.player?.telemetry?.position ? positionLabel : 'No telemetry is available; you can still submit the request.' }}</small></div>
           </div>
 
-          <button class="button primary full" type="submit" :disabled="requestBusy === 'create' || requestForm.subject.trim().length < 3 || requestForm.detail.trim().length < 10">
+          <button class="button primary full" type="submit" :disabled="requestBusy === 'create' || !canSubmitSupportRequest">
             {{ requestBusy === 'create' ? 'Sending…' : 'Send request to staff' }}
           </button>
         </form>

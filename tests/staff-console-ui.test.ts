@@ -24,4 +24,15 @@ describe('staff console browser boundaries', () => {
     expect(app.match(/!playerReasons\[playerItem\.username\]\?\.trim\(\)/g)).toHaveLength(3)
     expect(app).toContain("playerAction(playerItem.username, 'remove-whitelist', { reason: playerReasons[playerItem.username] })")
   })
+
+  it('opens Discord request links in a focused staff dialog', () => {
+    const app = read('src/client/App.vue')
+
+    expect(app).toContain("new URLSearchParams(window.location.search).get('request')")
+    expect(app).toContain("page.value = 'requests'")
+    expect(app).toContain("requestFilter.value = 'all'")
+    expect(app).toContain(':role="requestDialogOpen ? \'dialog\' : undefined"')
+    expect(app).toContain('aria-label="Close request dialog"')
+    expect(app).toContain("event.key === 'Escape'")
+  })
 })

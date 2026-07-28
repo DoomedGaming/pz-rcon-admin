@@ -57,6 +57,7 @@ export const EDITABLE_PLAIN_CONFIG_KEYS = [
   'PZ_PLAYER_MODS_URL',
   'PZ_PLAYER_RESTART_SCHEDULE',
   'PZ_PLAYER_ANNOUNCEMENT',
+  'PZ_ADMIN_PUBLIC_URL',
   'PZ_PROVIDER_NAME',
   'PZ_PROVIDER_URL',
 ] as const satisfies readonly SecureConfigKey[]

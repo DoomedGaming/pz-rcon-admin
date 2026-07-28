@@ -1,5 +1,18 @@
+import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 import { buildPlayerMapRoster, buildPlayerPortalCommunity } from '../src/server/player-portal.js'
+
+const playerPortalSource = readFileSync(new URL('../src/client/PlayerPortal.vue', import.meta.url), 'utf8')
+
+describe('player portal request form', () => {
+  it('explains request length requirements and reports progress before enabling submit', () => {
+    expect(playerPortalSource).toContain('SUPPORT_REQUEST_SUBJECT_MIN_LENGTH')
+    expect(playerPortalSource).toContain('SUPPORT_REQUEST_DETAIL_MIN_LENGTH')
+    expect(playerPortalSource).toContain('request-subject-progress')
+    expect(playerPortalSource).toContain('request-detail-progress')
+    expect(playerPortalSource).toContain("requestBusy === 'create' || !canSubmitSupportRequest")
+  })
+})
 
 describe('player portal community configuration', () => {
   it('keeps operator-provided join information and normalizes safe web links', () => {
