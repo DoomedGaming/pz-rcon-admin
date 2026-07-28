@@ -11,6 +11,7 @@ type SecretKey =
   | 'PZ_TELEMETRY_FTP_PASSWORD'
   | 'PZ_PLAYER_SESSION_SECRET'
   | 'PZ_PLAYER_DB_FTP_PASSWORD'
+  | 'PZ_DISCORD_MOD_WEBHOOK_URL'
 
 interface ConfigurationState {
   values: Record<string, string>
@@ -61,6 +62,7 @@ const form = ref({
   announcement: '',
   providerName: '',
   providerUrl: '',
+  discordModWebhookUrl: '',
 })
 const clearSecrets = ref<SecretKey[]>([])
 const secretsConfigured = ref<Record<SecretKey, boolean>>({
@@ -71,6 +73,7 @@ const secretsConfigured = ref<Record<SecretKey, boolean>>({
   PZ_TELEMETRY_FTP_PASSWORD: false,
   PZ_PLAYER_SESSION_SECRET: false,
   PZ_PLAYER_DB_FTP_PASSWORD: false,
+  PZ_DISCORD_MOD_WEBHOOK_URL: false,
 })
 const loading = ref(true)
 const loaded = ref(false)
@@ -220,6 +223,7 @@ async function save() {
   if (form.value.telemetryPassword) config.PZ_TELEMETRY_FTP_PASSWORD = form.value.telemetryPassword
   if (form.value.playerSessionSecret) config.PZ_PLAYER_SESSION_SECRET = form.value.playerSessionSecret
   if (form.value.playerFtpPassword) config.PZ_PLAYER_DB_FTP_PASSWORD = form.value.playerFtpPassword
+  if (form.value.discordModWebhookUrl) config.PZ_DISCORD_MOD_WEBHOOK_URL = form.value.discordModWebhookUrl
 
   busy.value = true
   try {
@@ -240,6 +244,7 @@ async function save() {
     form.value.telemetryPassword = ''
     form.value.playerSessionSecret = ''
     form.value.playerFtpPassword = ''
+    form.value.discordModWebhookUrl = ''
     void waitForRestart()
   } catch (reason) {
     error.value = reason instanceof Error ? reason.message : 'Configuration could not be saved'
@@ -271,6 +276,13 @@ onMounted(() => void load())
         <label class="wide">New session signing secret <small>{{ configuredHint('DASHBOARD_SESSION_SECRET') }}</small><input v-model="form.dashboardSessionSecret" type="password" autocomplete="new-password" minlength="32" :disabled="clearSecrets.includes('DASHBOARD_SESSION_SECRET')" /></label>
         <label class="check wide"><input v-model="clearSecrets" type="checkbox" value="DASHBOARD_SESSION_SECRET" /> Rotate the dashboard session secret automatically</label>
         <label class="check wide"><input v-model="form.secureCookie" type="checkbox" /> Dashboard is served through HTTPS</label>
+      </fieldset>
+
+      <fieldset>
+        <legend>Discord moderator notifications</legend>
+        <label class="wide">New channel webhook URL <small>{{ configuredHint('PZ_DISCORD_MOD_WEBHOOK_URL', 'Enter a replacement or leave blank to keep notifications active.') }}</small><input v-model="form.discordModWebhookUrl" type="password" autocomplete="new-password" :disabled="clearSecrets.includes('PZ_DISCORD_MOD_WEBHOOK_URL')" /></label>
+        <label class="check wide"><input v-model="clearSecrets" type="checkbox" value="PZ_DISCORD_MOD_WEBHOOK_URL" /> Disable Discord moderator notifications and remove the stored webhook</label>
+        <p class="configuration-note wide">This sends only new Request Center activity, staff request actions, and successful kick, ban, or whitelist-removal actions. It does not mirror the administrator audit log. Webhook messages suppress all Discord mentions.</p>
       </fieldset>
 
       <fieldset>

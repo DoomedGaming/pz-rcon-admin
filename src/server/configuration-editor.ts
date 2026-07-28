@@ -12,6 +12,7 @@ export const EDITABLE_SECRET_CONFIG_KEYS = [
   'PZ_TELEMETRY_FTP_PASSWORD',
   'PZ_PLAYER_SESSION_SECRET',
   'PZ_PLAYER_DB_FTP_PASSWORD',
+  'PZ_DISCORD_MOD_WEBHOOK_URL',
 ] as const satisfies readonly SecureConfigKey[]
 
 export const CLEARABLE_SECRET_CONFIG_KEYS = [
@@ -20,6 +21,7 @@ export const CLEARABLE_SECRET_CONFIG_KEYS = [
   'PZ_TELEMETRY_FTP_PASSWORD',
   'PZ_PLAYER_SESSION_SECRET',
   'PZ_PLAYER_DB_FTP_PASSWORD',
+  'PZ_DISCORD_MOD_WEBHOOK_URL',
 ] as const satisfies readonly SecureConfigKey[]
 
 export const EDITABLE_PLAIN_CONFIG_KEYS = [

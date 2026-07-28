@@ -94,6 +94,7 @@ export const appConfig = {
     name: publicText(process.env.PZ_PROVIDER_NAME, 80) || (legacyGportalUrl ? 'G-Portal' : 'Server provider'),
     url: publicHttpUrl(process.env.PZ_PROVIDER_URL || legacyGportalUrl),
   },
+  discordModerationWebhookUrl: process.env.PZ_DISCORD_MOD_WEBHOOK_URL || '',
   dataPath: process.env.DATA_PATH || 'data/dashboard.json',
   configSummary,
   sandboxText: process.env.PZ_SANDBOX_PATH && existsSync(process.env.PZ_SANDBOX_PATH)

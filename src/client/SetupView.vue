@@ -54,6 +54,7 @@ const form = ref({
   announcement: '',
   providerName: '',
   providerUrl: '',
+  discordModWebhookUrl: '',
 })
 const busy = ref(false)
 const saved = ref(false)
@@ -134,6 +135,7 @@ async function save() {
           PZ_PLAYER_ANNOUNCEMENT: form.value.announcement,
           PZ_PROVIDER_NAME: form.value.providerName,
           PZ_PROVIDER_URL: form.value.providerUrl,
+          PZ_DISCORD_MOD_WEBHOOK_URL: form.value.discordModWebhookUrl,
         },
       }),
     })
@@ -148,6 +150,7 @@ async function save() {
     form.value.playerSessionSecret = ''
     form.value.playerFtpPassword = ''
     form.value.telemetryToken = ''
+    form.value.discordModWebhookUrl = ''
     token.value = ''
     void waitForRestart()
   } catch (reason) {
@@ -182,6 +185,11 @@ async function save() {
         <fieldset>
           <legend>Setup access</legend>
           <label class="wide">One-time setup token<input v-model="token" type="password" autocomplete="one-time-code" required /></label>
+        </fieldset>
+
+        <fieldset>
+          <legend>Discord moderator notifications</legend>
+          <label class="wide">Channel webhook URL <small>Optional secret. Sends Request Center activity and successful kick, ban, or whitelist-removal actions only; it never mirrors the full audit log.</small><input v-model="form.discordModWebhookUrl" type="password" autocomplete="new-password" /></label>
         </fieldset>
 
         <fieldset>

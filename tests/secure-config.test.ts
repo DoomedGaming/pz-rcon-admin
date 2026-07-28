@@ -85,4 +85,14 @@ describe('encrypted secure configuration', () => {
       PZ_RCON_POLL_SECONDS: 4,
     })).toThrow('RCON poll interval must be at least 5 seconds')
   })
+
+  it('rejects a Discord channel URL where a secret webhook URL is required', () => {
+    expect(() => buildInitialSecureConfig({
+      DASHBOARD_PASSWORD: 'a-long-dashboard-password',
+      PZ_RCON_HOST: '127.0.0.1',
+      PZ_RCON_PORT: 27015,
+      PZ_RCON_PASSWORD: 'a-rcon-password',
+      PZ_DISCORD_MOD_WEBHOOK_URL: 'https://discord.com/channels/1069116248417386536/1531752683621584946',
+    })).toThrow('channel webhook URL')
+  })
 })

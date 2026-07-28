@@ -19,6 +19,7 @@ import { editableSecureConfigState, updateEditableSecureConfig } from './configu
 import { buildInitialSecureConfig, loadSecureConfig, saveSecureConfig } from './secure-config.js'
 import { normalizePlayerTelemetry, TelemetryFtpBridge } from './telemetry.js'
 import { ServerConfigFtpBridge } from './server-config-ftp.js'
+import { DiscordModerationNotifier, type ModerationNotification } from './discord-moderation.js'
 
 const app = express()
 const store = new DashboardStore(appConfig.dataPath)
@@ -27,6 +28,7 @@ const auth = createAuth(appConfig.dashboardPassword, appConfig.sessionSecret, ap
 const playerAuth = createPlayerAuth(appConfig.playerSessionSecret, appConfig.secureCookie)
 const playerCredentialVerifier = new PzPlayerCredentialVerifier(appConfig.playerAuth)
 const liveSettings = new LiveSettingsService(appConfig.configSummary.values, store.getLiveSettingOverrides())
+const discordModeration = new DiscordModerationNotifier(appConfig.discordModerationWebhookUrl)
 const loginAttempts = new Map<string, { count: number; resetAt: number }>()
 const playerLoginAttempts = new Map<string, { count: number; resetAt: number }>()
 const telemetryBridge = new TelemetryFtpBridge(appConfig.telemetryFtp, (snapshot, observedAt) => {
@@ -80,6 +82,12 @@ function requireDashboardRole(required: 'moderator' | 'admin') {
 
 function dashboardActor(request: Request): string {
   return requestDashboardIdentity(request).username ?? 'Bootstrap administrator'
+}
+
+function notifyModerators(notification: ModerationNotification) {
+  void discordModeration.send(notification).catch((error) => {
+    console.warn(`Discord moderator notification failed: ${errorMessage(error)}`)
+  })
 }
 
 function updateConfigSummary(key: string, value: boolean | number) {
@@ -395,6 +403,7 @@ app.post('/api/player/requests', (request, response) => {
       } : {}),
     })
     store.addAudit({ category: 'request', action: 'create', target: supportRequest.id, success: true, detail: `${username} created a ${supportRequest.category} request` })
+    notifyModerators({ kind: 'request-created', request: supportRequest })
     response.status(201).json(supportRequest)
   } catch (error) {
     store.addAudit({ category: 'request', action: 'create', target: username, success: false, detail: errorMessage(error) })
@@ -413,6 +422,7 @@ app.post('/api/player/requests/:id/messages', (request, response) => {
     }
     const updated = store.addSupportRequestMessage(id, username, 'user', normalizeSupportRequestMessage(request.body?.message))
     store.addAudit({ category: 'request', action: 'player-comment', target: id, success: true, detail: `${username} replied` })
+    notifyModerators({ kind: 'request-player-reply', request: updated, message: updated.messages.at(-1)?.body ?? '' })
     response.json(updated)
   } catch (error) {
     store.addAudit({ category: 'request', action: 'player-comment', target: id, success: false, detail: errorMessage(error) })
@@ -493,6 +503,7 @@ app.patch('/api/requests/:id', (request, response) => {
         ? store.setSupportRequestStatus(id, request.body.status, actor)
         : (() => { throw new Error('Choose a valid request action or status') })()
     store.addAudit({ category: 'request', action: request.body?.action === 'claim' ? 'claim' : `status-${updated.status}`, target: id, success: true, detail: `${actor} updated ${updated.createdBy}'s request` })
+    notifyModerators({ kind: 'request-updated', request: updated, actor, action: request.body?.action === 'claim' ? 'claim' : 'status' })
     response.json(updated)
   } catch (error) {
     store.addAudit({ category: 'request', action: 'staff-update', target: id, success: false, detail: errorMessage(error) })
@@ -507,6 +518,7 @@ app.post('/api/requests/:id/messages', (request, response) => {
   try {
     const updated = store.addSupportRequestMessage(id, actor, identity.role, normalizeSupportRequestMessage(request.body?.message))
     store.addAudit({ category: 'request', action: 'staff-comment', target: id, success: true, detail: `${actor} replied to ${updated.createdBy}` })
+    notifyModerators({ kind: 'request-staff-reply', request: updated, actor, message: updated.messages.at(-1)?.body ?? '' })
     response.json(updated)
   } catch (error) {
     store.addAudit({ category: 'request', action: 'staff-comment', target: id, success: false, detail: errorMessage(error) })
@@ -604,6 +616,9 @@ app.post('/api/players/:username/actions', async (request, response) => {
       : buildPlayerCommand(username, action, payload)
     const output = validatePlayerActionOutput(teleportPosition ? 'teleport-coordinates' : action, await rcon.send(command))
     store.addAudit({ category: 'player', action, target: username, command: redactCommand(command), success: true, detail: moderationReason ? `Reason: ${moderationReason}` : undefined })
+    if (moderationReason && isModeratorPlayerAction(action)) {
+      notifyModerators({ kind: 'player-action', action, actor: dashboardActor(request), target: username, reason: moderationReason })
+    }
     response.json({ ok: true, output, teleportMethod: teleportPosition ? 'coordinates' : 'player' })
   } catch (error) {
     store.addAudit({ category: 'player', action: action || 'unknown', target: username, success: false, detail: errorMessage(error) })

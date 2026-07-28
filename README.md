@@ -20,6 +20,7 @@ See [CHANGELOG.md](CHANGELOG.md) for release-by-release changes. PZ RCON Admin a
 | Player history | First/last observed, session count, observed online time | Dashboard polling |
 | Player portal | Read-only access to a survivor's own history and character telemetry | PZ account DB + dashboard data |
 | Request Center | Private self-service help requests with staff assignment, replies, and status tracking | Local dashboard store + optional telemetry |
+| Discord notifications | New Request Center activity and successful moderation actions, without mirroring the full audit log | Channel webhook |
 | User settings | Per-account Green, Amber, Blue, Violet, or Rose theme with Green as the default | Local dashboard store |
 | Dashboard roles | User by default, with explicit Moderator and Admin promotion | Local dashboard store |
 | Communication | Server-wide announcements | RCON |
@@ -53,6 +54,9 @@ PZ_PLAYER_ANNOUNCEMENT=Welcome to the new season.
 
 PZ_PROVIDER_NAME=My hosting provider
 PZ_PROVIDER_URL=https://provider.example.com/my-server
+
+# Optional secret: a webhook for the private moderator channel.
+PZ_DISCORD_MOD_WEBHOOK_URL=https://discord.com/api/webhooks/your-webhook-id/your-webhook-token
 ```
 
 Players can independently choose Green, Amber, Blue, Violet, or Rose in their account settings. Their choice follows them into the staff console if they are promoted.
@@ -123,6 +127,8 @@ The player API derives the username from a signed, HttpOnly session. Every accou
 Signed-in players can open **Request Center** to ask for general help, report that they are stuck, report another survivor, request safehouse assistance, or ask for voice-chat help. A request is private to the account that created it and dashboard staff. Players can view and reply only to their own requests; they never receive RCON or moderation access. A player may have up to five active requests at once. When deep telemetry has a current position for the player, the request stores that location snapshot so staff can review where the problem occurred without exposing another survivor's location.
 
 Moderators and Admins share the **Request queue** in `/mod`. Staff can claim a request, exchange private replies, approve or deny it, mark claimed or approved work completed, or explicitly reopen a denied or completed request. The available states are `Open`, `Claimed`, `Approved`, `Denied`, and `Completed`, with guarded transitions and a single active assignee. Request creation, replies, assignments, and status changes are persisted in `data/dashboard.json` and written to the audit log. The player portal refreshes every 15 seconds and the staff console every 10 seconds, so changes appear during play without a dashboard or game-server restart.
+
+An optional Discord channel webhook can notify moderators about new requests, player and staff request replies, request claims and status changes, and successful kick, ban, or whitelist-removal actions. The integration is deliberately called from those moderation workflows rather than from the audit store, so authentication, telemetry, raw console commands, server settings, and other administrator audit entries never reach Discord. Messages suppress Discord mentions even when player-written text contains `@everyone` or a user/role mention. Create a channel webhook in Discord, then save its URL under **Configuration → Discord moderator notifications**; the URL is treated as a secret, encrypted at rest, and never returned to the browser.
 
 Signed-in players can also open **Settings** from the survivor portal and choose a full interface theme. Green remains the default; Amber, Blue, Violet, and Rose are also available. Each palette changes backgrounds, panels, navigation, borders, text tones, and highlights. The selection is saved per Project Zomboid username in `data/dashboard.json`, applies immediately without a game-server or dashboard restart, and follows moderators or administrators into the control console.
 

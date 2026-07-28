@@ -2,6 +2,7 @@ import { createCipheriv, createDecipheriv, randomBytes } from 'node:crypto'
 import { chmodSync, existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { join, resolve } from 'node:path'
+import { normalizeDiscordWebhookUrl } from './discord-moderation.js'
 
 export const SECURE_CONFIG_KEYS = [
   'HOST',
@@ -46,6 +47,7 @@ export const SECURE_CONFIG_KEYS = [
   'PZ_PLAYER_MODS_URL',
   'PZ_PLAYER_RESTART_SCHEDULE',
   'PZ_PLAYER_ANNOUNCEMENT',
+  'PZ_DISCORD_MOD_WEBHOOK_URL',
   'PZ_PROVIDER_NAME',
   'PZ_PROVIDER_URL',
   'PZ_SETUP_PUBLIC_URL',
@@ -117,6 +119,9 @@ export function buildInitialSecureConfig(value: unknown): SecureConfig {
   }
   if (config.PZ_PLAYER_SESSION_SECRET && config.PZ_PLAYER_SESSION_SECRET.length < 32) {
     throw new Error('Player session secret must be at least 32 characters or left blank for automatic generation')
+  }
+  if (config.PZ_DISCORD_MOD_WEBHOOK_URL) {
+    config.PZ_DISCORD_MOD_WEBHOOK_URL = normalizeDiscordWebhookUrl(config.PZ_DISCORD_MOD_WEBHOOK_URL)
   }
 
   config.DASHBOARD_SESSION_SECRET ||= randomBytes(32).toString('base64url')

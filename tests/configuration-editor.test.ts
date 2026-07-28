@@ -15,6 +15,7 @@ function configured() {
     PZ_TELEMETRY_FTP_HOST: 'ftp.example.test',
     PZ_PLAYER_AUTH_ENABLED: 'true',
     PZ_PLAYER_SESSION_SECRET: 'player-session-secret-at-least-32-characters',
+    PZ_DISCORD_MOD_WEBHOOK_URL: 'https://discord.com/api/webhooks/123456789012345678/abcdefghijklmnopqrstuvwxyz_123456',
   })
 }
 
@@ -28,10 +29,12 @@ describe('secure configuration editor', () => {
       DASHBOARD_PASSWORD: true,
       PZ_RCON_PASSWORD: true,
       PZ_TELEMETRY_TOKEN: true,
+      PZ_DISCORD_MOD_WEBHOOK_URL: true,
     })
     expect(JSON.stringify(state)).not.toContain(dashboardPassword)
     expect(JSON.stringify(state)).not.toContain(rconPassword)
     expect(JSON.stringify(state)).not.toContain('private-http-token')
+    expect(JSON.stringify(state)).not.toContain('abcdefghijklmnopqrstuvwxyz_123456')
   })
 
   it('updates plain values while blank secret inputs preserve encrypted secrets', () => {
@@ -65,6 +68,15 @@ describe('secure configuration editor', () => {
     expect(updated.PZ_PLAYER_SESSION_SECRET).toHaveLength(43)
     expect(updated.PZ_PLAYER_SESSION_SECRET).not.toBe(current.PZ_PLAYER_SESSION_SECRET)
     expect(updated.DASHBOARD_PASSWORD).toBe(dashboardPassword)
+  })
+
+  it('can remove the optional Discord moderator webhook', () => {
+    const updated = updateEditableSecureConfig(configured(), {
+      config: {},
+      clearSecrets: ['PZ_DISCORD_MOD_WEBHOOK_URL'],
+    })
+
+    expect(updated).not.toHaveProperty('PZ_DISCORD_MOD_WEBHOOK_URL')
   })
 
   it('validates the complete merged configuration before saving', () => {
