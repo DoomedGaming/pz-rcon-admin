@@ -35,12 +35,26 @@ describe('Discord moderation notifications', () => {
     )
     expect(created.allowed_mentions.parse).toEqual([])
     expect(created.embeds[0]).toMatchObject({ title: 'New support request', timestamp: '2026-07-28T20:01:00.000Z' })
-    expect(created.embeds[0].description).toContain('\\*\\*markdown\\*\\*')
+    expect(created.embeds[0].description).toBeUndefined()
+    expect(created.embeds[0].fields).toContainEqual({
+      name: 'Request details',
+      value: 'Bob used \\*\\*markdown\\*\\* and <@123456789012345678\\>\\.',
+    })
     expect(created.embeds[0].url).toBe('https://pz.example.test/mod?request=request-123')
     expect(created.embeds[0].fields).toContainEqual({
       name: 'Open request',
       value: '[Open this request in PZ Admin](https://pz.example.test/mod?request=request-123)',
     })
+
+    const updated = buildDiscordModerationPayload({
+      kind: 'request-updated',
+      request: { ...request, detail: 'x'.repeat(1_000), status: 'claimed' },
+      actor: 'Moderator',
+      action: 'claim',
+    })
+    const details = updated.embeds[0].fields.find((field) => field.name === 'Request details')
+    expect(details?.value).toHaveLength(900)
+    expect(details?.value.endsWith('…')).toBe(true)
 
     const action = buildDiscordModerationPayload({
       kind: 'player-action',

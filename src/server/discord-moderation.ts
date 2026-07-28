@@ -4,6 +4,7 @@ import type { ModeratorPlayerAction } from './commands.js'
 
 const DISCORD_EMBED_COLOR = 0xa7b46a
 const DISCORD_WEBHOOK_PATH = /^\/api(?:\/v\d+)?\/webhooks\/(\d{17,20})\/([A-Za-z0-9._-]{20,})\/?$/
+const DISCORD_REQUEST_DETAIL_EXCERPT_LENGTH = 900
 
 type DiscordField = { name: string; value: string; inline?: boolean }
 
@@ -42,6 +43,13 @@ function clean(value: string, maxLength: number): string {
     .slice(0, maxLength) || 'Not provided'
 }
 
+function excerpt(value: string, maxLength: number): string {
+  const cleaned = clean(value, maxLength + 1)
+  return cleaned.length > maxLength
+    ? `${cleaned.slice(0, maxLength - 1).trimEnd()}…`
+    : cleaned
+}
+
 function categoryLabel(category: SupportRequest['category']): string {
   return ({
     help: 'General help',
@@ -72,6 +80,7 @@ function requestFields(request: SupportRequest): DiscordField[] {
     { name: 'Subject', value: clean(request.subject, 1_024) },
   ]
   if (request.targetUsername) fields.push({ name: 'Reported survivor', value: clean(request.targetUsername, 1_024) })
+  fields.push({ name: 'Request details', value: excerpt(request.detail, DISCORD_REQUEST_DETAIL_EXCERPT_LENGTH) })
   return fields
 }
 
@@ -91,7 +100,6 @@ export function buildDiscordModerationPayload(
   switch (notification.kind) {
     case 'request-created':
       embed.title = 'New support request'
-      embed.description = clean(notification.request.detail, 4_096)
       embed.fields = requestFields(notification.request)
       break
     case 'request-player-reply':

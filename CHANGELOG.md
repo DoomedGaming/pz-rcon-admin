@@ -8,6 +8,10 @@ This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added
+
+- Discord request notifications now include a clearly labeled excerpt of the original request details for context.
+
 ## [0.7.1] - 2026-07-28
 
 ### Added
