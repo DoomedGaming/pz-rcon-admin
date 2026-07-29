@@ -10,7 +10,20 @@ export const commandDefinitions: CommandDefinition[] = [
   { id: 'gunshot', label: 'Gunshot event', description: 'Trigger a distant gunshot sound.', category: 'world', command: 'gunshot', impact: 'caution' },
   { id: 'lightning', label: 'Lightning strike', description: 'Trigger lightning on a named online survivor.', category: 'world', command: 'lightning {{username}}', args: [{ name: 'username', label: 'Username', required: true }], impact: 'caution' },
   { id: 'create-horde', label: 'Create horde', description: 'Spawn a zombie horde near a named online survivor.', category: 'world', command: 'createhorde {{count}} {{username}}', args: [{ name: 'count', label: 'Count', required: true }, { name: 'username', label: 'Username', required: true }], impact: 'danger' },
-  { id: 'remove-zombies', label: 'Remove zombies', description: 'Remove zombies from the active world.', category: 'world', command: 'removezombies', impact: 'danger' },
+  {
+    id: 'remove-zombies',
+    label: 'Remove zombies',
+    description: 'Remove loaded zombies near exact world coordinates.',
+    category: 'world',
+    command: 'removezombies -radius {{radius}} -x {{x}} -y {{y}} -z {{z}} -reanimated false',
+    args: [
+      { name: 'radius', label: 'Radius', required: true },
+      { name: 'x', label: 'X coordinate', required: true },
+      { name: 'y', label: 'Y coordinate', required: true },
+      { name: 'z', label: 'Z coordinate', required: true },
+    ],
+    impact: 'danger',
+  },
   { id: 'quit', label: 'Shut down server', description: 'Save and stop the game process. Your hosting provider is required to start it again.', category: 'server', command: 'quit', impact: 'danger' },
 ]
 
@@ -25,6 +38,20 @@ function quote(value: unknown): string {
 export function buildDefinedCommand(id: string, args: Record<string, unknown> = {}): { definition: CommandDefinition; command: string } {
   const definition = commandDefinitions.find((item) => item.id === id)
   if (!definition) throw new Error('Unknown command')
+  if (definition.id === 'remove-zombies') {
+    const integer = (name: string, label: string, minimum: number, maximum: number) => {
+      const value = Number(args[name])
+      if (!Number.isInteger(value) || value < minimum || value > maximum) {
+        throw new Error(`${label} must be a whole number from ${minimum} to ${maximum}`)
+      }
+      return value
+    }
+    const radius = integer('radius', 'Radius', 1, 100)
+    const x = integer('x', 'X coordinate', 0, 1_000_000)
+    const y = integer('y', 'Y coordinate', 0, 1_000_000)
+    const z = integer('z', 'Z coordinate', -31, 31)
+    return { definition, command: `removezombies -radius ${radius} -x ${x} -y ${y} -z ${z} -reanimated false` }
+  }
   let command = definition.command
   for (const argument of definition.args ?? []) {
     const value = clean(args[argument.name])

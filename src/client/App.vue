@@ -72,6 +72,10 @@ const busy = ref('')
 const announcement = ref('')
 const worldTarget = ref('')
 const hordeCount = ref('25')
+const zombieClearX = ref('')
+const zombieClearY = ref('')
+const zombieClearZ = ref('0')
+const zombieClearRadius = ref('100')
 const playerReasons = ref<Record<string, string>>({})
 const itemName = ref('Base.Axe')
 const itemCount = ref('1')
@@ -399,6 +403,19 @@ async function runCommand(id: string, args: Record<string, string> = {}) {
   } finally {
     busy.value = ''
   }
+}
+
+function useWorldTargetPosition() {
+  const target = onlinePlayers.value.find((player) => player.username.toLocaleLowerCase('en-US') === worldTarget.value.trim().toLocaleLowerCase('en-US'))
+  const position = target?.telemetry?.position
+  if (!position) {
+    notify('No telemetry position is available for that online survivor', true)
+    return
+  }
+  zombieClearX.value = String(Math.floor(position.x))
+  zombieClearY.value = String(Math.floor(position.y))
+  zombieClearZ.value = String(Math.floor(position.z))
+  notify(`Zombie-clear coordinates copied from ${target.username}`)
 }
 
 async function playerAction(username: string, action: string, payload: Record<string, unknown> = {}) {
@@ -1016,7 +1033,21 @@ onBeforeUnmount(() => {
               <label>Horde size<input v-model="hordeCount" inputmode="numeric" /></label>
               <button class="button primary full" :disabled="!worldTarget.trim()" @click="runCommand('lightning', { username: worldTarget })">Trigger lightning</button>
               <button class="button danger-button full" :disabled="!worldTarget.trim()" @click="runCommand('create-horde', { username: worldTarget, count: hordeCount })">Create horde nearby</button>
-              <small>The current live server help requires a username for console-originated events.</small>
+              <h3 class="coordinate-subheading">Zombie clearing</h3>
+              <p>Build 42 requires a center and radius over RCON. A bare <code>removezombies</code> command reports success but removes nothing.</p>
+              <button class="button outline full" :disabled="!worldTarget.trim()" @click="useWorldTargetPosition">Use survivor position</button>
+              <div class="field-row triple">
+                <label>X<input v-model="zombieClearX" inputmode="numeric" placeholder="10632" /></label>
+                <label>Y<input v-model="zombieClearY" inputmode="numeric" placeholder="9761" /></label>
+                <label>Z<input v-model="zombieClearZ" inputmode="numeric" /></label>
+              </div>
+              <label>Radius (1–100 tiles)<input v-model="zombieClearRadius" inputmode="numeric" /></label>
+              <button
+                class="button danger-button full"
+                :disabled="!zombieClearX.trim() || !zombieClearY.trim() || !zombieClearZ.trim() || !zombieClearRadius.trim() || busy === 'remove-zombies'"
+                @click="runCommand('remove-zombies', { x: zombieClearX, y: zombieClearY, z: zombieClearZ, radius: zombieClearRadius })"
+              >{{ busy === 'remove-zombies' ? 'Removing…' : 'Remove zombies' }}</button>
+              <small>Reanimated player corpses are preserved. The current live server help requires a username for lightning and horde events.</small>
             </aside>
           </div>
         </template>

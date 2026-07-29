@@ -25,7 +25,7 @@ See [CHANGELOG.md](CHANGELOG.md) for release-by-release changes. PZ RCON Admin a
 | Dashboard roles | User by default, with explicit Moderator and Admin promotion | Local dashboard store |
 | Communication | Server-wide announcements | RCON |
 | Server control | Save, reload options, check mod updates, safe save-then-shutdown | RCON |
-| World control | Helicopter, gunshot, player-targeted lightning/hordes, zombie removal | RCON |
+| World control | Helicopter, gunshot, player-targeted lightning/hordes, coordinate-based zombie removal | RCON |
 | Configuration | Searchable `servertest.ini` and `SandboxVars.lua`, with secret redaction | Auto-refreshed FTP/FTPS files or read-only local overrides |
 | Live settings | Allowlisted access, chat, PvP, safehouse, visibility, faction, voice, anti-grief, and save options with no restart | RCON `changeoption` |
 | Mods | Mod IDs, Workshop IDs, and direct Workshop links | Auto-refreshed `servertest.ini` |

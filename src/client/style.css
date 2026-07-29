@@ -298,6 +298,7 @@ input:focus, textarea:focus, select:focus { border-color: var(--acid); box-shado
 .coordinate-panel > p:not(.eyebrow) { color: var(--muted); font-size: 10px; line-height: 1.5; }
 .coordinate-panel .button { margin-top: 8px; }
 .coordinate-panel > small { display: block; margin-top: 14px; color: var(--muted-2); font-size: 9px; line-height: 1.5; }
+.coordinate-subheading { margin: 20px 0 0; padding-top: 18px; border-top: 1px solid var(--line-soft); font: 600 15px 'Barlow Condensed'; text-transform: uppercase; letter-spacing: .04em; }
 .field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 .field-row.triple { grid-template-columns: repeat(3, 1fr); }
 

@@ -7,6 +7,14 @@ describe('command builders', () => {
     expect(result.command).toBe('servermsg "Restart soon save"')
   })
 
+  it('gives zombie removal the coordinate arguments required by Build 42 RCON', () => {
+    expect(buildDefinedCommand('remove-zombies', { radius: 100, x: 10_632, y: 9_761, z: 0 }).command)
+      .toBe('removezombies -radius 100 -x 10632 -y 9761 -z 0 -reanimated false')
+    expect(() => buildDefinedCommand('remove-zombies')).toThrow('Radius must be a whole number')
+    expect(() => buildDefinedCommand('remove-zombies', { radius: 101, x: 10_632, y: 9_761, z: 0 })).toThrow('Radius must be a whole number')
+    expect(() => buildDefinedCommand('remove-zombies', { radius: 100, x: 'west', y: 9_761, z: 0 })).toThrow('X coordinate must be a whole number')
+  })
+
   it('uses the current Build 42 player ability commands', () => {
     expect(buildPlayerCommand('Alice', 'godmode')).toBe('godmodeplayer "Alice" -true')
     expect(buildPlayerCommand('Alice', 'godmode', { enabled: false })).toBe('godmodeplayer "Alice" -false')
