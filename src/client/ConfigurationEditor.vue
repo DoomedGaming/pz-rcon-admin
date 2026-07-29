@@ -2,6 +2,7 @@
 import { onMounted, ref } from 'vue'
 import type { SetupStatus } from '@shared/types'
 import { STAFF_CONSOLE_PATH } from '@shared/routes'
+import { DEFAULT_TELEMETRY_REMOTE_PATH, normalizeTelemetryRemotePath } from '@shared/telemetry-path'
 
 type SecretKey =
   | 'DASHBOARD_PASSWORD'
@@ -36,7 +37,7 @@ const form = ref({
   telemetryUser: '',
   telemetryPassword: '',
   telemetrySecure: 'false',
-  telemetryPath: 'Lua/PZRconAdminTelemetry/players.json',
+  telemetryPath: DEFAULT_TELEMETRY_REMOTE_PATH,
   telemetryPollSeconds: '5',
   configFtpPath: 'Server/servertest.ini',
   sandboxFtpPath: 'Server/servertest_SandboxVars.lua',
@@ -104,7 +105,7 @@ function hydrate(state: ConfigurationState) {
   form.value.telemetryPort = value(values, 'PZ_TELEMETRY_FTP_PORT', '21')
   form.value.telemetryUser = value(values, 'PZ_TELEMETRY_FTP_USER')
   form.value.telemetrySecure = value(values, 'PZ_TELEMETRY_FTP_SECURE', 'false')
-  form.value.telemetryPath = value(values, 'PZ_TELEMETRY_FTP_PATH', 'Lua/PZRconAdminTelemetry/players.json')
+  form.value.telemetryPath = normalizeTelemetryRemotePath(value(values, 'PZ_TELEMETRY_FTP_PATH', DEFAULT_TELEMETRY_REMOTE_PATH))
   form.value.telemetryPollSeconds = value(values, 'PZ_TELEMETRY_FTP_POLL_SECONDS', '5')
   form.value.configFtpPath = value(values, 'PZ_CONFIG_FTP_PATH', 'Server/servertest.ini')
   form.value.sandboxFtpPath = value(values, 'PZ_SANDBOX_FTP_PATH', 'Server/servertest_SandboxVars.lua')

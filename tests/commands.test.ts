@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { buildDefinedCommand, buildPlayerCommand, buildPlayerTeleportToPositionCommand, isModeratorPlayerAction, validatePlayerActionOutput, validateRawCommand } from '../src/server/commands.js'
+import { buildDefinedCommand, buildPlayerCommand, buildPlayerTeleportToPositionCommand, isModeratorPlayerAction, validateDefinedCommandOutput, validatePlayerActionOutput, validateRawCommand } from '../src/server/commands.js'
 
 describe('command builders', () => {
   it('quotes announcement text and removes newline injection', () => {
@@ -13,6 +13,24 @@ describe('command builders', () => {
     expect(() => buildDefinedCommand('remove-zombies')).toThrow('Radius must be a whole number')
     expect(() => buildDefinedCommand('remove-zombies', { radius: 101, x: 10_632, y: 9_761, z: 0 })).toThrow('Radius must be a whole number')
     expect(() => buildDefinedCommand('remove-zombies', { radius: 100, x: 'west', y: 9_761, z: 0 })).toThrow('X coordinate must be a whole number')
+  })
+
+  it('validates horde counts instead of allowing silent server clamping', () => {
+    expect(buildDefinedCommand('create-horde', { count: 25, username: 'Alice' }).command)
+      .toBe('createhorde 25 "Alice"')
+    expect(buildPlayerCommand('Alice', 'horde', { count: 500 })).toBe('createhorde 500 "Alice"')
+    expect(() => buildDefinedCommand('create-horde', { count: 501, username: 'Alice' })).toThrow('Count must be a whole number')
+    expect(() => buildPlayerCommand('Alice', 'horde', { count: 0 })).toThrow('Count must be a whole number')
+  })
+
+  it('validates item and vehicle identifiers and item counts', () => {
+    expect(buildPlayerCommand('Alice', 'additem', { item: 'Base.Axe', count: 2 }))
+      .toBe('additem "Alice" "Base.Axe" 2')
+    expect(buildPlayerCommand('Alice', 'vehicle', { script: 'Base.PickUpVanLights' }))
+      .toBe('addvehicle "Base.PickUpVanLights" "Alice"')
+    expect(() => buildPlayerCommand('Alice', 'additem', { item: '', count: 1 })).toThrow('Item is required')
+    expect(() => buildPlayerCommand('Alice', 'additem', { item: 'Base.Axe', count: 101 })).toThrow('Count must be a whole number')
+    expect(() => buildPlayerCommand('Alice', 'vehicle', { script: '../Pickup' })).toThrow('not a valid Project Zomboid identifier')
   })
 
   it('uses the current Build 42 player ability commands', () => {
@@ -41,7 +59,7 @@ describe('command builders', () => {
     expect(buildPlayerCommand('Alice', 'teleport-coordinates', { x: 10_632, y: 9_761, z: 0 }))
       .toBe('teleportto "Alice" 10632,9761,0')
     expect(buildPlayerCommand('Alice', 'teleport-player', { destination: 'Bob' }))
-      .toBe('teleport "Alice" "Bob"')
+      .toBe('teleportplayer "Alice" "Bob"')
     expect(buildPlayerTeleportToPositionCommand('Alice', { x: 10_632.9, y: 9_761.1, z: 0 }))
       .toBe('teleportto "Alice" 10632,9761,0')
   })
@@ -88,7 +106,30 @@ describe('command builders', () => {
     expect(() => validatePlayerActionOutput('teleport-player', 'Usage: /teleport "player"')).toThrow('rejected the teleport')
   })
 
+  it('classifies other known Build 42 player-action errors as failures', () => {
+    expect(() => validatePlayerActionOutput('teleport-player', "Can't find player Bob")).toThrow('could not find')
+    expect(() => validatePlayerActionOutput('kick', "User Alice doesn't exist.")).toThrow('could not find')
+    expect(() => validatePlayerActionOutput('kick', "This user can't be kicked.")).toThrow('rejected the kick')
+    expect(() => validatePlayerActionOutput('additem', "Item Base.Missing doesn't exist.")).toThrow('could not find that item')
+    expect(() => validatePlayerActionOutput('vehicle', 'Unknown vehicle script "Base.Missing"')).toThrow('vehicle spawn')
+    expect(() => validatePlayerActionOutput('godmode', 'Wrong arguments!')).toThrow('rejected the player action')
+  })
+
+  it('classifies known Build 42 server-command errors as failures', () => {
+    expect(() => validateDefinedCommandOutput('save', 'Unknown command save')).toThrow('does not expose')
+    expect(() => validateDefinedCommandOutput('create-horde', 'User "Missing" not found')).toThrow('horde request')
+    expect(() => validateDefinedCommandOutput('lightning', 'Pass a username')).toThrow('lightning request')
+    expect(() => validateDefinedCommandOutput('remove-zombies', 'invalid z')).toThrow('zombie removal coordinates')
+    expect(validateDefinedCommandOutput('save', 'World saved')).toBe('World saved')
+  })
+
   it('rejects empty raw commands', () => {
     expect(() => validateRawCommand('  ')).toThrow('Command is required')
+  })
+
+  it('preserves raw-command quoting and rejects oversized commands instead of truncating them', () => {
+    expect(validateRawCommand('servermsg "Restart soon"')).toBe('servermsg "Restart soon"')
+    expect(validateRawCommand('servermsg "First"\nsave')).toBe('servermsg "First" save')
+    expect(() => validateRawCommand(`servermsg ${'x'.repeat(501)}`)).toThrow('Command is too long')
   })
 })

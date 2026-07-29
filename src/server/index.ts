@@ -7,7 +7,7 @@ import { isSupportRequestStatus, normalizeSupportRequestInput, normalizeSupportR
 import { isValidWorldMapTile, worldMapUpstreamTileUrl } from '../shared/world-map.js'
 import { createAuth, createPlayerAuth } from './auth.js'
 import { appConfig } from './config.js'
-import { buildDefinedCommand, buildPlayerCommand, buildPlayerTeleportToPositionCommand, commandDefinitions, isModeratorPlayerAction, validateModerationReason, validatePlayerActionOutput, validateRawCommand, type PlayerAction } from './commands.js'
+import { buildDefinedCommand, buildPlayerCommand, buildPlayerTeleportToPositionCommand, commandDefinitions, isModeratorPlayerAction, validateDefinedCommandOutput, validateModerationReason, validatePlayerActionOutput, validateRawCommand, type PlayerAction } from './commands.js'
 import { parseSandboxLua, summarizeConfig } from './ini.js'
 import { LiveSettingsService, validateLiveSettingOutput } from './live-settings.js'
 import { isPlayerTheme } from '../shared/player-settings.js'
@@ -575,9 +575,9 @@ app.post('/api/commands/:id', requireDashboardRole('admin'), async (request, res
       return response.status(400).json({ error: `Confirmation must equal ${built.definition.id}` })
     }
     if (built.definition.id === 'quit') await rcon.send('save')
-    const output = await rcon.send(built.command)
+    const output = validateDefinedCommandOutput(built.definition.id, await rcon.send(built.command))
     store.addAudit({ category: built.definition.category === 'world' || built.definition.category === 'weather' ? 'world' : 'server', action: built.definition.id, command: redactCommand(built.command), success: true })
-    response.json({ ok: true, output })
+    response.json({ ok: true, output, command: redactCommand(built.command) })
   } catch (error) {
     store.addAudit({ category: 'server', action: commandId, success: false, detail: errorMessage(error) })
     response.status(400).json({ error: errorMessage(error) })

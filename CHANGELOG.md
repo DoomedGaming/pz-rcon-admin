@@ -8,6 +8,15 @@ This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.7.4] - 2026-07-29
+
+### Fixed
+
+- Migrated the telemetry snapshot from the unsupported `players.json` filename to JSON content in `players.txt`, including automatic compatibility for the former dashboard setting.
+- Corrected survivor-to-survivor fallback RCON from `teleport` to Build 42's two-player `teleportplayer` command.
+- Validated horde, item, and vehicle inputs and now surface known Project Zomboid rejection replies instead of recording false success.
+- Preserved quotes and enforced the documented length limit in raw RCON commands, and display the actual graphical command in console history.
+
 ## [0.7.3] - 2026-07-29
 
 ### Fixed
@@ -123,7 +132,8 @@ This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 - Corrected the GitHub Container Registry workflow's image build platform.
 
-[Unreleased]: https://github.com/DoomedGaming/pz-rcon-admin/compare/v0.7.3...HEAD
+[Unreleased]: https://github.com/DoomedGaming/pz-rcon-admin/compare/v0.7.4...HEAD
+[0.7.4]: https://github.com/DoomedGaming/pz-rcon-admin/compare/v0.7.3...v0.7.4
 [0.7.3]: https://github.com/DoomedGaming/pz-rcon-admin/compare/v0.7.2...v0.7.3
 [0.7.2]: https://github.com/DoomedGaming/pz-rcon-admin/compare/v0.7.1...v0.7.2
 [0.7.1]: https://github.com/DoomedGaming/pz-rcon-admin/compare/v0.7.0...v0.7.1

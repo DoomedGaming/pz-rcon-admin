@@ -15,7 +15,7 @@ describe('GitHub Pages project site', () => {
     expect(landing).toContain(`v${packageJson.version}`)
     expect(docs).toContain('Docker quick start')
     expect(docs).toContain('ghcr.io/doomedgaming/pz-rcon-admin:latest')
-    expect(docs).toContain('Lua/PZRconAdminTelemetry/players.json')
+    expect(docs).toContain('Lua/PZRconAdminTelemetry/players.txt')
     expect(docs).toContain('3767189432')
     expect(docs).toContain(`v${packageJson.version}`)
   })

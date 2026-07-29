@@ -73,7 +73,26 @@ describe('encrypted secure configuration', () => {
 
     expect(config.PZ_CONFIG_FTP_PATH).toBe('Server/servertest.ini')
     expect(config.PZ_SANDBOX_FTP_PATH).toBe('Server/servertest_SandboxVars.lua')
+    expect(config.PZ_TELEMETRY_FTP_PATH).toBe('Lua/PZRconAdminTelemetry/players.txt')
     expect(config.PZ_TELEMETRY_FTP_POLL_SECONDS).toBe('5')
+  })
+
+  it('migrates the unsupported legacy telemetry filename and preserves custom paths', () => {
+    const base = {
+      DASHBOARD_PASSWORD: 'a-long-dashboard-password',
+      PZ_RCON_HOST: '127.0.0.1',
+      PZ_RCON_PORT: 27015,
+      PZ_RCON_PASSWORD: 'a-rcon-password',
+      PZ_TELEMETRY_FTP_HOST: 'ftp.example.test',
+    }
+    expect(buildInitialSecureConfig({
+      ...base,
+      PZ_TELEMETRY_FTP_PATH: 'Lua/PZRconAdminTelemetry/players.json',
+    }).PZ_TELEMETRY_FTP_PATH).toBe('Lua/PZRconAdminTelemetry/players.txt')
+    expect(buildInitialSecureConfig({
+      ...base,
+      PZ_TELEMETRY_FTP_PATH: 'custom/snapshot.txt',
+    }).PZ_TELEMETRY_FTP_PATH).toBe('custom/snapshot.txt')
   })
 
   it('rejects an RCON poll interval below the supported five-second minimum', () => {

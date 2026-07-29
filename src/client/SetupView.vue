@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import type { SetupStatus } from '@shared/types'
+import { DEFAULT_TELEMETRY_REMOTE_PATH } from '@shared/telemetry-path'
 
 defineProps<{ status: SetupStatus }>()
 
@@ -28,7 +29,7 @@ const form = ref({
   telemetryUser: '',
   telemetryPassword: '',
   telemetrySecure: 'false',
-  telemetryPath: 'Lua/PZRconAdminTelemetry/players.json',
+  telemetryPath: DEFAULT_TELEMETRY_REMOTE_PATH,
   telemetryPollSeconds: '5',
   configFtpPath: 'Server/servertest.ini',
   sandboxFtpPath: 'Server/servertest_SandboxVars.lua',

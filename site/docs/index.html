@@ -31,7 +31,7 @@
   <main id="main">
     <header class="page-hero">
       <div class="shell">
-        <p class="eyebrow">Operator field manual · v0.7.3</p>
+        <p class="eyebrow">Operator field manual · v0.7.4</p>
         <h1>Install once.<br><span>Know every part.</span></h1>
         <p>Deploy the dashboard, complete encrypted first-run setup, connect RCON, and add only the optional integrations your server needs.</p>
       </div>
@@ -229,7 +229,7 @@ docker compose logs -f dashboard</code></pre>
             <tbody>
               <tr><td>FTP/FTPS host, port, username, password</td><td>The file-service credentials from the hosting provider. These are unrelated to RCON.</td></tr>
               <tr><td>Transport</td><td>Plain FTP, explicit FTPS, or implicit FTPS according to the provider.</td></tr>
-              <tr><td>Telemetry file path</td><td><code>Lua/PZRconAdminTelemetry/players.json</code></td></tr>
+              <tr><td>Telemetry file path</td><td><code>Lua/PZRconAdminTelemetry/players.txt</code> (JSON content)</td></tr>
               <tr><td>Server INI FTP path</td><td><code>Server/servertest.ini</code></td></tr>
               <tr><td>SandboxVars FTP path</td><td><code>Server/servertest_SandboxVars.lua</code></td></tr>
               <tr><td>Telemetry poll interval</td><td>5 seconds by default. Configuration files refresh separately every 60 seconds by default.</td></tr>
@@ -310,7 +310,7 @@ docker compose logs -f dashboard</code></pre>
 docker compose up -d --no-build dashboard
 docker compose logs --tail=100 dashboard</code></pre>
           </div>
-          <p>For predictable rollouts, replace <code>latest</code> in Compose with a release such as <code class="inline-code">0.7.3</code>. The tags <code>X.Y.Z</code> and <code>X.Y</code> are published for each release.</p>
+          <p>For predictable rollouts, replace <code>latest</code> in Compose with a release such as <code class="inline-code">0.7.4</code>. The tags <code>X.Y.Z</code> and <code>X.Y</code> are published for each release.</p>
 
           <h3>Back up persistent data</h3>
           <p>Back up the named volume before major changes. It contains both the encrypted configuration and the encryption key, plus player history, roles, support requests, preferences, and audit records. A backup of only one secure-config file is not sufficient.</p>
@@ -344,7 +344,7 @@ curl -i http://127.0.0.1:8788/api/health</code></pre>
           <h3>Telemetry shows no players</h3>
           <ul>
             <li>Install exactly one telemetry variant and restart the game server.</li>
-            <li>Join the server and verify <code>Lua/PZRconAdminTelemetry/players.json</code> exists and is updating.</li>
+            <li>Join the server and verify <code>Lua/PZRconAdminTelemetry/players.txt</code> exists and is updating.</li>
             <li>Confirm the FTP remote path uses forward slashes and the provider's remote root.</li>
             <li>Check the Mods &amp; Settings integration status for the most recent FTP error.</li>
             <li>After a game update or file verification, confirm the direct-install Lua file still exists.</li>
@@ -369,7 +369,7 @@ curl -i http://127.0.0.1:8788/api/health</code></pre>
               <tr><td><code>PZ_RCON_PORT</code></td><td>Required</td><td>Project Zomboid RCON port.</td></tr>
               <tr><td><code>PZ_RCON_PASSWORD</code></td><td>Required</td><td>Project Zomboid RCON password.</td></tr>
               <tr><td><code>PZ_RCON_POLL_SECONDS</code></td><td><code>15</code></td><td>RCON player/status polling; minimum 5 seconds.</td></tr>
-              <tr><td><code>PZ_TELEMETRY_FTP_PATH</code></td><td><code>Lua/PZRconAdminTelemetry/players.json</code></td><td>Remote telemetry snapshot path.</td></tr>
+              <tr><td><code>PZ_TELEMETRY_FTP_PATH</code></td><td><code>Lua/PZRconAdminTelemetry/players.txt</code></td><td>Remote JSON telemetry snapshot path; Build 42 requires an allowed text-file extension.</td></tr>
               <tr><td><code>PZ_TELEMETRY_FTP_POLL_SECONDS</code></td><td><code>5</code></td><td>Dashboard telemetry retrieval; minimum 5 seconds.</td></tr>
               <tr><td><code>PZ_CONFIG_FTP_POLL_SECONDS</code></td><td><code>60</code></td><td>Server configuration retrieval; minimum 15 seconds.</td></tr>
               <tr><td><code>PZ_CONFIG_FTP_PATH</code></td><td><code>Server/servertest.ini</code></td><td>Remote server INI path, refreshed on the configuration polling interval.</td></tr>
@@ -406,7 +406,7 @@ curl -i http://127.0.0.1:8788/api/health</code></pre>
 
   <footer class="site-footer">
     <div class="shell footer-grid">
-      <span>Documentation for PZ RCON Admin v0.7.3 · Updated with the project.</span>
+      <span>Documentation for PZ RCON Admin v0.7.4 · Updated with the project.</span>
       <div class="footer-links">
         <a href="../">Home</a>
         <a href="https://github.com/DoomedGaming/pz-rcon-admin/issues">Report an issue</a>

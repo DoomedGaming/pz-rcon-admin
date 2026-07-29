@@ -390,12 +390,12 @@ async function runCommand(id: string, args: Record<string, string> = {}) {
   if (definition.impact === 'danger' && !window.confirm(`${definition.label}\n\n${definition.description}\n\nContinue?`)) return
   busy.value = id
   try {
-    const result = await api<{ output: string }>(`/api/commands/${id}`, {
+    const result = await api<{ output: string; command: string }>(`/api/commands/${id}`, {
       method: 'POST',
       body: JSON.stringify({ args, confirm: definition.impact === 'danger' ? id : undefined }),
     })
     notify(`${definition.label} completed`)
-    consoleLines.value.unshift({ at: new Date().toISOString(), command: definition.command, output: result.output })
+    consoleLines.value.unshift({ at: new Date().toISOString(), command: result.command, output: result.output })
     if (id === 'announce') announcement.value = ''
     await loadAll(true)
   } catch (error) {

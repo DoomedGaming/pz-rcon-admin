@@ -4,6 +4,7 @@ import { homedir } from 'node:os'
 import { join, resolve } from 'node:path'
 import { normalizeDiscordWebhookUrl } from './discord-moderation.js'
 import { normalizePublicAdminUrl } from '../shared/routes.js'
+import { DEFAULT_TELEMETRY_REMOTE_PATH, normalizeTelemetryRemotePath } from '../shared/telemetry-path.js'
 
 export const SECURE_CONFIG_KEYS = [
   'HOST',
@@ -91,10 +92,14 @@ function paths(directory: string) {
 
 function normalize(input: Record<string, unknown>): SecureConfig {
   const allowed = new Set<string>(SECURE_CONFIG_KEYS)
-  return Object.fromEntries(Object.entries(input).flatMap(([key, value]) => {
+  const config = Object.fromEntries(Object.entries(input).flatMap(([key, value]) => {
     if (!allowed.has(key) || typeof value !== 'string') return []
     return [[key, value.slice(0, 4_096)]]
   })) as SecureConfig
+  if (config.PZ_TELEMETRY_FTP_PATH) {
+    config.PZ_TELEMETRY_FTP_PATH = normalizeTelemetryRemotePath(config.PZ_TELEMETRY_FTP_PATH)
+  }
+  return config
 }
 
 export function buildInitialSecureConfig(value: unknown): SecureConfig {
@@ -151,7 +156,7 @@ export function buildInitialSecureConfig(value: unknown): SecureConfig {
     config.PZ_TELEMETRY_FTP_SECURE = ['true', 'implicit'].includes(config.PZ_TELEMETRY_FTP_SECURE ?? '')
       ? config.PZ_TELEMETRY_FTP_SECURE
       : 'false'
-    config.PZ_TELEMETRY_FTP_PATH ||= 'Lua/PZRconAdminTelemetry/players.json'
+    config.PZ_TELEMETRY_FTP_PATH = normalizeTelemetryRemotePath(config.PZ_TELEMETRY_FTP_PATH || DEFAULT_TELEMETRY_REMOTE_PATH)
     config.PZ_TELEMETRY_FTP_POLL_SECONDS ||= '5'
     config.PZ_CONFIG_FTP_PATH ||= `Server/${world}.ini`
     config.PZ_SANDBOX_FTP_PATH ||= `Server/${world}_SandboxVars.lua`

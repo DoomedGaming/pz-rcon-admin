@@ -80,7 +80,7 @@ Hosting-provider operations are separate from RCON. A stopped process cannot be 
 
 Deep telemetry connects two separately maintained components released with the same version number:
 
-1. [PZ RCON Admin Telemetry](https://github.com/DoomedGaming/pz-rcon-admin-telemetry) is a credential-free, server-only Project Zomboid Build 42.19+ companion. Choose its `direct-install` package or its `workshop` package—never both. Either version refreshes `Lua/PZRconAdminTelemetry/players.json` when the online survivor count changes and otherwise throttles writes to once per real minute while the server is active.
+1. [PZ RCON Admin Telemetry](https://github.com/DoomedGaming/pz-rcon-admin-telemetry) is a credential-free, server-only Project Zomboid Build 42.20+ companion. Choose its `direct-install` package or its `workshop` package—never both. Either version refreshes the JSON snapshot at `Lua/PZRconAdminTelemetry/players.txt` when the online survivor count changes and otherwise throttles writes to once per real minute while the server is active. Build 42 requires the `.txt` extension for Lua-written text files.
 2. The dashboard's built-in FTP bridge retrieves that file from a host that exposes the server files over FTP or FTPS, validates its schema and limits, then updates the survivor registry in one batch.
 
 For the direct package, upload `direct-install/media/lua/server/PZRconAdminTelemetry_Server.lua` from the companion repository to `media/lua/server/PZRconAdminTelemetry_Server.lua` in the game server tree. Do **not** add the direct package to `Mods` or `WorkshopItems`. Provider game updates or **Verify game files** may remove this file, so re-check the path after either operation.
@@ -95,7 +95,7 @@ PZ_TELEMETRY_FTP_PORT=your-provider-ftp-port
 PZ_TELEMETRY_FTP_USER=your-provider-ftp-user
 PZ_TELEMETRY_FTP_PASSWORD=your-provider-ftp-password
 PZ_TELEMETRY_FTP_SECURE=false
-PZ_TELEMETRY_FTP_PATH=Lua/PZRconAdminTelemetry/players.json
+PZ_TELEMETRY_FTP_PATH=Lua/PZRconAdminTelemetry/players.txt
 PZ_TELEMETRY_FTP_POLL_SECONDS=5
 PZ_CONFIG_FTP_PATH=Server/servertest.ini
 PZ_SANDBOX_FTP_PATH=Server/servertest_SandboxVars.lua

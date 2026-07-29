@@ -5,6 +5,7 @@ import { buildPlayerPortalCommunity, publicHttpUrl, publicText } from './player-
 import { normalizePublicAdminUrl } from '../shared/routes.js'
 import { applySecureConfig } from './secure-config.js'
 import { assertStartupSecurity } from './startup-security.js'
+import { normalizeTelemetryRemotePath } from '../shared/telemetry-path.js'
 
 try {
   const envPath = process.env.DASHBOARD_ENV_FILE || '.env'
@@ -63,7 +64,7 @@ export const appConfig = {
     user: process.env.PZ_TELEMETRY_FTP_USER || '',
     password: process.env.PZ_TELEMETRY_FTP_PASSWORD || '',
     secure: ftpSecure(process.env.PZ_TELEMETRY_FTP_SECURE),
-    remotePath: process.env.PZ_TELEMETRY_FTP_PATH || 'Lua/PZRconAdminTelemetry/players.json',
+    remotePath: normalizeTelemetryRemotePath(process.env.PZ_TELEMETRY_FTP_PATH),
     pollSeconds: Math.max(5, int(process.env.PZ_TELEMETRY_FTP_POLL_SECONDS, 5)),
   },
   serverConfigFtp: {

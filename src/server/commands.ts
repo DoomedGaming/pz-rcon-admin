@@ -35,22 +35,38 @@ function quote(value: unknown): string {
   return `"${clean(value)}"`
 }
 
+function boundedInteger(value: unknown, label: string, minimum: number, maximum: number): number {
+  const number = Number(value)
+  if (!Number.isInteger(number) || number < minimum || number > maximum) {
+    throw new Error(`${label} must be a whole number from ${minimum} to ${maximum}`)
+  }
+  return number
+}
+
+function gameIdentifier(value: unknown, label: string): string {
+  const identifier = clean(value)
+  if (!identifier) throw new Error(`${label} is required`)
+  if (!/^[A-Za-z0-9.-]*[A-Za-z][A-Za-z0-9_.-]*$/.test(identifier)) {
+    throw new Error(`${label} is not a valid Project Zomboid identifier`)
+  }
+  return identifier
+}
+
 export function buildDefinedCommand(id: string, args: Record<string, unknown> = {}): { definition: CommandDefinition; command: string } {
   const definition = commandDefinitions.find((item) => item.id === id)
   if (!definition) throw new Error('Unknown command')
   if (definition.id === 'remove-zombies') {
-    const integer = (name: string, label: string, minimum: number, maximum: number) => {
-      const value = Number(args[name])
-      if (!Number.isInteger(value) || value < minimum || value > maximum) {
-        throw new Error(`${label} must be a whole number from ${minimum} to ${maximum}`)
-      }
-      return value
-    }
-    const radius = integer('radius', 'Radius', 1, 100)
-    const x = integer('x', 'X coordinate', 0, 1_000_000)
-    const y = integer('y', 'Y coordinate', 0, 1_000_000)
-    const z = integer('z', 'Z coordinate', -31, 31)
+    const radius = boundedInteger(args.radius, 'Radius', 1, 100)
+    const x = boundedInteger(args.x, 'X coordinate', 0, 1_000_000)
+    const y = boundedInteger(args.y, 'Y coordinate', 0, 1_000_000)
+    const z = boundedInteger(args.z, 'Z coordinate', -31, 31)
     return { definition, command: `removezombies -radius ${radius} -x ${x} -y ${y} -z ${z} -reanimated false` }
+  }
+  if (definition.id === 'create-horde') {
+    const count = boundedInteger(args.count, 'Count', 1, 500)
+    const username = clean(args.username)
+    if (!username) throw new Error('Username is required')
+    return { definition, command: `createhorde ${count} ${quote(username)}` }
   }
   let command = definition.command
   for (const argument of definition.args ?? []) {
@@ -99,8 +115,8 @@ export function buildPlayerCommand(username: string, action: PlayerAction, paylo
     case 'invisible': return `invisibleplayer ${user} -${payload.enabled === false ? 'false' : 'true'}`
     case 'noclip': return `noclip ${user} -${payload.enabled === false ? 'false' : 'true'}`
     case 'lightning': return `lightning ${user}`
-    case 'horde': return `createhorde ${clean(payload.count || 25)} ${user}`
-    case 'additem': return `additem ${user} ${quote(payload.item)} ${clean(payload.count || 1)}`
+    case 'horde': return `createhorde ${boundedInteger(payload.count ?? 25, 'Count', 1, 500)} ${user}`
+    case 'additem': return `additem ${user} ${quote(gameIdentifier(payload.item, 'Item'))} ${boundedInteger(payload.count ?? 1, 'Count', 1, 100)}`
     case 'addxp': {
       const perk = resolvePlayerXpPerk(payload.perk)
       if (!perk) throw new Error('Choose a valid XP skill')
@@ -108,7 +124,7 @@ export function buildPlayerCommand(username: string, action: PlayerAction, paylo
       if (!Number.isInteger(amount) || amount < 1 || amount > 100_000) throw new Error('XP amount must be a whole number from 1 to 100000')
       return `addxp ${user} ${perk}=${amount} -true`
     }
-    case 'vehicle': return `addvehicle ${quote(payload.script)} ${user}`
+    case 'vehicle': return `addvehicle ${quote(gameIdentifier(payload.script, 'Vehicle script'))} ${user}`
     case 'key': {
       const keyId = Number(payload.keyId)
       if (!Number.isInteger(keyId) || keyId < 0 || keyId > 2_147_483_647) throw new Error('Vehicle key ID must be a whole number')
@@ -126,7 +142,7 @@ export function buildPlayerCommand(username: string, action: PlayerAction, paylo
       if (destination.toLocaleLowerCase('en-US') === clean(username).toLocaleLowerCase('en-US')) {
         throw new Error('Choose a different destination survivor')
       }
-      return `teleport ${user} ${quote(destination)}`
+      return `teleportplayer ${user} ${quote(destination)}`
     }
     case 'remove-whitelist': {
       validateModerationReason(payload.reason)
@@ -151,8 +167,26 @@ export function validatePlayerActionOutput(action: PlayerAction, output: string)
   if (/\bunknown command\b|\bcommand\b.*\b(?:not found|not recognized)\b/i.test(output)) {
     throw new Error('This Project Zomboid server build does not expose that RCON command')
   }
-  if (/\bno such user\b|\buser\b.*\bnot found\b/i.test(output)) {
+  if (/\bno such user\b|\buser\b.*\b(?:not found|doesn't exist)\b|\bcan't find player\b|\bno connection for player\b/i.test(output)) {
     throw new Error('Project Zomboid could not find that connected player')
+  }
+  if (/\bwrong arguments\b|\bnot enough rights\b/i.test(output)) {
+    throw new Error('Project Zomboid rejected the player action')
+  }
+  if (action === 'kick' && /\bthis user can't be kicked\b/i.test(output)) {
+    throw new Error('Project Zomboid rejected the kick request')
+  }
+  if (action === 'additem' && /\bitem\b.*\bdoesn't exist\b/i.test(output)) {
+    throw new Error('Project Zomboid could not find that item')
+  }
+  if (action === 'vehicle' && /\bunknown vehicle script\b|\binvalid location\b|\bi can not spawn\b/i.test(output)) {
+    throw new Error('Project Zomboid rejected that vehicle spawn')
+  }
+  if (action === 'lightning' && /\bpass a username\b/i.test(output)) {
+    throw new Error('Project Zomboid rejected the lightning request')
+  }
+  if (action === 'horde' && /\bspecify a player\b/i.test(output)) {
+    throw new Error('Project Zomboid rejected the horde request')
   }
   if (action.startsWith('teleport') && /\b(?:error|failed|unable|cannot)\b.*\b(?:teleport|player|user)\b|\busage\s*:\s*\/?teleport/i.test(output)) {
     throw new Error('Project Zomboid rejected the teleport request')
@@ -163,8 +197,27 @@ export function validatePlayerActionOutput(action: PlayerAction, output: string)
   return output
 }
 
+export function validateDefinedCommandOutput(id: string, output: string): string {
+  if (/\bunknown command\b|\bcommand\b.*\b(?:not found|not recognized)\b/i.test(output)) {
+    throw new Error('This Project Zomboid server build does not expose that RCON command')
+  }
+  if (/\bwrong arguments\b|\bnot enough rights\b/i.test(output)) {
+    throw new Error('Project Zomboid rejected the server command')
+  }
+  if (id === 'create-horde' && /\bspecify a player\b|\buser\b.*\bnot found\b/i.test(output)) {
+    throw new Error('Project Zomboid rejected the horde request')
+  }
+  if (id === 'lightning' && /\bpass a username\b|\buser\b.*\bnot found\b/i.test(output)) {
+    throw new Error('Project Zomboid rejected the lightning request')
+  }
+  if (id === 'remove-zombies' && /\binvalid z\b/i.test(output)) {
+    throw new Error('Project Zomboid rejected the zombie removal coordinates')
+  }
+  return output
+}
+
 export function validateRawCommand(value: unknown): string {
-  const command = clean(value)
+  const command = String(value ?? '').replace(/[\r\n]/g, ' ').trim()
   if (!command) throw new Error('Command is required')
   if (command.length > 500) throw new Error('Command is too long')
   return command
