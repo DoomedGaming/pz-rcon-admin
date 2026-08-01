@@ -499,7 +499,7 @@ onBeforeUnmount(() => {
           <article><small>Character data</small><strong>{{ portal.player.telemetry ? relativeTime(portal.player.telemetry.updatedAt) : 'Pending' }}</strong></article>
         </section>
 
-        <ZomboidMap :players="mapPlayers" audience="player" :follow-username="portal.player?.username" />
+        <ZomboidMap :players="mapPlayers" :server-version="portal.server.serverVersion" audience="player" :follow-username="portal.player?.username" />
 
         <section class="player-portal-metrics player-activity-metrics" aria-label="Survivor activity summary">
           <article><small>Sessions observed</small><strong>{{ portal.player.sessionCount }}</strong></article>

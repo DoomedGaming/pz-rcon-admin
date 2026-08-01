@@ -12,6 +12,10 @@ describe('player portal request form', () => {
     expect(playerPortalSource).toContain('request-detail-progress')
     expect(playerPortalSource).toContain("requestBusy === 'create' || !canSubmitSupportRequest")
   })
+
+  it('passes the reported server build to the survivor map', () => {
+    expect(playerPortalSource).toContain(':server-version="portal.server.serverVersion"')
+  })
 })
 
 describe('player portal community configuration', () => {

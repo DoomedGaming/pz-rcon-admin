@@ -644,6 +644,12 @@ const observedVehicles = computed(() => {
 })
 const modeLabel = computed(() => overview.value?.connection.mode === 'live' ? 'LIVE RCON' : overview.value?.connection.mode === 'demo' ? 'DEMO DATA' : 'NOT CONFIGURED')
 const connectionLabel = computed(() => overview.value?.connection.connected ? 'Connected' : 'Disconnected')
+const serverVersionLabel = computed(() => {
+  if (overview.value?.server.serverVersion) return overview.value.server.serverVersion
+  const integration = overview.value?.integrations
+  if (!integration || integration.telemetrySource === 'none') return 'Telemetry not configured'
+  return integration.telemetryConnected ? 'Not reported by companion' : 'Waiting for telemetry'
+})
 const telemetryStatusLabel = computed(() => {
   const integration = overview.value?.integrations
   if (!integration || integration.telemetrySource === 'none') return 'Not configured'
@@ -896,6 +902,7 @@ onBeforeUnmount(() => {
               <div class="panel-heading"><div><p class="eyebrow">Current world</p><h2>Server profile</h2></div><button v-if="isAdmin" class="text-button" @click="page = 'mods'">View all settings →</button></div>
               <dl class="profile-grid">
                 <div><dt>Map chain</dt><dd>{{ overview.server.map }}</dd></div>
+                <div><dt>Project Zomboid build</dt><dd>{{ serverVersionLabel }}</dd></div>
                 <div><dt>Visibility</dt><dd>{{ overview.server.public ? 'Public listing' : 'Private' }}</dd></div>
                 <div><dt>Join policy</dt><dd>{{ overview.config.open ? 'Open' : 'Whitelist only' }}</dd></div>
                 <div><dt>Auto-save</dt><dd>Every {{ overview.config.saveMinutes }} minutes</dd></div>
@@ -922,7 +929,7 @@ onBeforeUnmount(() => {
             <div><p class="eyebrow">Live + historical</p><h2>Survivor registry</h2><p>Online state comes from RCON. Session totals are tracked by this dashboard from the moment it starts monitoring.</p></div>
             <div class="intro-stat"><strong>{{ onlinePlayers.length }}</strong><span>online now</span></div>
           </div>
-          <ZomboidMap :players="overview.players" audience="admin" />
+          <ZomboidMap :players="overview.players" :server-version="overview.server.serverVersion" audience="admin" />
           <article class="panel survivor-panel">
             <div class="table-tabs"><span class="active">All survivors {{ overview.players.length }}</span><span>Online {{ onlinePlayers.length }}</span><span>Offline {{ offlinePlayers.length }}</span></div>
             <div v-if="!overview.players.length" class="empty-state"><strong>No survivors observed yet.</strong><span>The registry fills automatically as players connect.</span></div>

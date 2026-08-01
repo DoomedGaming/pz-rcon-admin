@@ -31,7 +31,7 @@
   <main id="main">
     <header class="page-hero">
       <div class="shell">
-        <p class="eyebrow">Operator field manual · v0.7.5</p>
+        <p class="eyebrow">Operator field manual · v0.8.0</p>
         <h1>Install once.<br><span>Know every part.</span></h1>
         <p>Deploy the dashboard, complete encrypted first-run setup, connect RCON, and add only the optional integrations your server needs.</p>
       </div>
@@ -314,7 +314,7 @@ docker compose logs -f dashboard</code></pre>
 docker compose up -d --no-build dashboard
 docker compose logs --tail=100 dashboard</code></pre>
           </div>
-          <p>For predictable rollouts, replace <code>latest</code> in Compose with a release such as <code class="inline-code">0.7.5</code>. The tags <code>X.Y.Z</code> and <code>X.Y</code> are published for each release.</p>
+          <p>For predictable rollouts, replace <code>latest</code> in Compose with a release such as <code class="inline-code">0.8.0</code>. The tags <code>X.Y.Z</code> and <code>X.Y</code> are published for each release.</p>
 
           <h3>Back up persistent data</h3>
           <p>Back up the named volume before major changes. It contains both the encrypted configuration and the encryption key, plus player history, roles, support requests, preferences, and audit records. A backup of only one secure-config file is not sufficient.</p>
@@ -410,7 +410,7 @@ curl -i http://127.0.0.1:8788/api/health</code></pre>
 
   <footer class="site-footer">
     <div class="shell footer-grid">
-      <span>Documentation for PZ RCON Admin v0.7.5 · Updated with the project.</span>
+      <span>Documentation for PZ RCON Admin v0.8.0 · Updated with the project.</span>
       <div class="footer-links">
         <a href="../">Home</a>
         <a href="https://github.com/DoomedGaming/pz-rcon-admin/issues">Report an issue</a>

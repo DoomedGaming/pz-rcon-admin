@@ -14,6 +14,7 @@ export interface TelemetrySnapshot {
   schemaVersion: 1
   generatedAt: number
   serverName?: string
+  serverVersion?: string
   roles: string[]
   players: TelemetrySnapshotPlayer[]
 }
@@ -37,6 +38,7 @@ export interface TelemetryBridgeState {
   lastSnapshotAt?: string
   lastError?: string
   playerCount: number
+  serverVersion?: string
 }
 
 interface FtpClient {
@@ -184,6 +186,7 @@ export function parseTelemetrySnapshot(text: string): TelemetrySnapshot {
     schemaVersion: 1,
     generatedAt: input.generatedAt,
     serverName: optionalText(input.serverName, 'serverName', 128),
+    serverVersion: optionalText(input.serverVersion, 'serverVersion', 64),
     roles,
     players,
   }
@@ -256,6 +259,7 @@ export class TelemetryFtpBridge {
       const sink = new LimitedTextSink()
       await client.downloadTo(sink, this.config.remotePath)
       const snapshot = parseTelemetrySnapshot(sink.text())
+      this.state.serverVersion = snapshot.serverVersion
       const snapshotKey = `${snapshot.generatedAt}:${snapshot.players.length}`
       if (snapshotKey !== this.lastSnapshotKey) {
         const observedAt = new Date(snapshot.generatedAt > 10_000_000_000 ? snapshot.generatedAt : snapshot.generatedAt * 1000)

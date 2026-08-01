@@ -35,4 +35,13 @@ describe('staff console browser boundaries', () => {
     expect(app).toContain('aria-label="Close request dialog"')
     expect(app).toContain("event.key === 'Escape'")
   })
+
+  it('shows the authoritative Project Zomboid build reported by telemetry', () => {
+    const app = read('src/client/App.vue')
+
+    expect(app).toContain('Project Zomboid build')
+    expect(app).toContain('const serverVersionLabel = computed')
+    expect(app).toContain("integration.telemetryConnected ? 'Not reported by companion' : 'Waiting for telemetry'")
+    expect(app).toContain(':server-version="overview.server.serverVersion"')
+  })
 })

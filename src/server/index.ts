@@ -4,7 +4,7 @@ import { resolve } from 'node:path'
 import express, { type Request, type Response } from 'express'
 import type { DashboardRole, Overview, PlayerPortalLanding, PlayerPortalOverview, PlayerTelemetry, SandboxSettingsSnapshot } from '../shared/types.js'
 import { isSupportRequestStatus, normalizeSupportRequestInput, normalizeSupportRequestMessage } from '../shared/support-requests.js'
-import { isValidWorldMapTile, worldMapUpstreamTileUrl } from '../shared/world-map.js'
+import { isValidWorldMapTile, worldMapById, worldMapUpstreamTileUrl } from '../shared/world-map.js'
 import { createAuth, createPlayerAuth } from './auth.js'
 import { appConfig } from './config.js'
 import { buildDefinedCommand, buildPlayerCommand, buildPlayerTeleportToPositionCommand, commandDefinitions, isModeratorPlayerAction, validateDefinedCommandOutput, validateModerationReason, validatePlayerActionOutput, validateRawCommand, type PlayerAction } from './commands.js'
@@ -215,24 +215,28 @@ function playerPortalLanding(): PlayerPortalLanding {
       map: summary.map,
       pvp: summary.pvp,
       public: summary.public,
+      serverVersion: telemetryBridge.getState().serverVersion,
       lastPollAt: connection.lastPollAt,
     },
     community: appConfig.playerPortal,
   }
 }
 
-app.get('/map-tiles/:level/:tile', async (request, response) => {
+app.get('/map-tiles/:mapId/:level/:tile', async (request, response) => {
   if (!auth.authenticated(request) && !playerAuth.username(request)) {
     return response.status(401).end()
   }
+  const worldMap = worldMapById(request.params.mapId)
   const level = Number(request.params.level)
-  const match = /^(\d+)_(\d+)\.webp$/.exec(request.params.tile)
+  const match = /^(\d+)_(\d+)\.(webp|jpg)$/.exec(request.params.tile)
   const x = Number(match?.[1])
   const y = Number(match?.[2])
-  if (!match || !isValidWorldMapTile(level, x, y)) return response.status(404).end()
+  if (!worldMap || !match || match[3] !== worldMap.tileFormat || !isValidWorldMapTile(worldMap, level, x, y)) {
+    return response.status(404).end()
+  }
 
   try {
-    const upstream = await fetch(worldMapUpstreamTileUrl(level, x, y), {
+    const upstream = await fetch(worldMapUpstreamTileUrl(worldMap, level, x, y), {
       headers: { 'User-Agent': 'PZ-RCON-Admin/0.1 map tile gateway' },
       redirect: 'error',
       signal: AbortSignal.timeout(8_000),
@@ -241,11 +245,11 @@ app.get('/map-tiles/:level/:tile', async (request, response) => {
 
     const contentType = upstream.headers.get('content-type')?.split(';')[0]
     const contentLength = Number(upstream.headers.get('content-length') ?? 0)
-    if (contentType !== 'image/webp' || contentLength > 1_048_576) return response.status(502).end()
+    if (contentType !== worldMap.contentType || contentLength > 1_048_576) return response.status(502).end()
 
     const body = Buffer.from(await upstream.arrayBuffer())
     if (!body.length || body.length > 1_048_576) return response.status(502).end()
-    response.setHeader('Content-Type', 'image/webp')
+    response.setHeader('Content-Type', worldMap.contentType)
     response.setHeader('Cache-Control', 'private, max-age=86400, stale-while-revalidate=604800')
     response.setHeader('Cross-Origin-Resource-Policy', 'same-origin')
     response.send(body)
@@ -469,6 +473,7 @@ app.get('/api/overview', (request, response) => {
       map: summary.map,
       pvp: summary.pvp,
       public: summary.public,
+      serverVersion: telemetryState.serverVersion,
       uptimeSince: store.getStartedAt(),
     },
     players,

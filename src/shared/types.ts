@@ -203,6 +203,7 @@ export interface Overview {
     map: string
     pvp: boolean
     public: boolean
+    serverVersion?: string
     uptimeSince?: string
   }
   players: PlayerRecord[]
@@ -237,6 +238,7 @@ export interface PlayerPortalServerSummary {
   map: string
   pvp: boolean
   public: boolean
+  serverVersion?: string
   lastPollAt?: string
 }
 

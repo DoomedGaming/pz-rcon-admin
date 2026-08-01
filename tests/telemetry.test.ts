@@ -6,6 +6,7 @@ const snapshot = JSON.stringify({
   schemaVersion: 1,
   generatedAt: 1_784_135_200,
   serverName: 'Doomed Gaming',
+  serverVersion: '42.20.0',
   roles: ['user', 'priority', 'observer', 'gm', 'moderator', 'admin', 'eventhost'],
   players: [{
     username: 'apop',
@@ -28,6 +29,7 @@ describe('Project Zomboid deep telemetry', () => {
   it('parses and normalizes a Build 42 server snapshot', () => {
     const parsed = parseTelemetrySnapshot(snapshot)
     expect(parsed.serverName).toBe('Doomed Gaming')
+    expect(parsed.serverVersion).toBe('42.20.0')
     expect(parsed.roles).toContain('eventhost')
     expect(parsed.players).toHaveLength(1)
     expect(parsed.players[0]).toMatchObject({
@@ -79,6 +81,12 @@ describe('Project Zomboid deep telemetry', () => {
       .toThrow('Duplicate telemetry role')
   })
 
+  it('accepts an older schema-1 snapshot that does not report the server build', () => {
+    const parsed = parseTelemetrySnapshot(JSON.stringify({ schemaVersion: 1, generatedAt: 1, players: [] }))
+
+    expect(parsed.serverVersion).toBeUndefined()
+  })
+
   it('downloads, validates, and imports a snapshot through the FTP bridge', async () => {
     const imported = vi.fn()
     const access = vi.fn().mockResolvedValue(undefined)
@@ -105,7 +113,7 @@ describe('Project Zomboid deep telemetry', () => {
     await expect(bridge.poll()).resolves.toBe(true)
     expect(access).toHaveBeenCalledWith(expect.objectContaining({ host: 'ftp.example.test', password: 'secret' }))
     expect(imported).toHaveBeenCalledOnce()
-    expect(bridge.getState()).toMatchObject({ configured: true, connected: true, playerCount: 1 })
+    expect(bridge.getState()).toMatchObject({ configured: true, connected: true, playerCount: 1, serverVersion: '42.20.0' })
     expect(close).toHaveBeenCalledOnce()
   })
 

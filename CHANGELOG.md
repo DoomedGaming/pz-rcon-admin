@@ -8,6 +8,13 @@ This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.8.0] - 2026-08-01
+
+### Added
+
+- Display the authoritative Project Zomboid server build reported by the telemetry companion in the dashboard's Server Profile.
+- Select the official Build 42.19 or Build 42.20 stable top-view map from that reported server build, with version-separated tile caching and no incorrect fallback for missing or unsupported versions.
+
 ## [0.7.5] - 2026-08-01
 
 ### Added

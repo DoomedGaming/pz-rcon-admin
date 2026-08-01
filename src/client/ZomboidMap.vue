@@ -3,11 +3,12 @@ import { computed, nextTick, onBeforeUnmount, watch, ref } from 'vue'
 import OpenSeadragon from 'openseadragon'
 import type { PlayerMapRecord } from '@shared/types'
 import {
-  WORLD_MAP,
   isValidWorldMapTile,
   isWorldPositionMapped,
   officialWorldMapPositionUrl,
+  worldMapForServerVersion,
   worldMapTilePath,
+  type WorldMapDefinition,
   type WorldPosition,
 } from '@shared/world-map'
 
@@ -15,9 +16,11 @@ const props = withDefaults(defineProps<{
   players: PlayerMapRecord[]
   audience: 'player' | 'admin'
   followUsername?: string
+  serverVersion?: string
 }>(), {
   players: () => [],
   followUsername: '',
+  serverVersion: '',
 })
 
 interface PlayerMarker {
@@ -36,9 +39,11 @@ let viewer: OpenSeadragon.Viewer | undefined
 let loadTimer: number | undefined
 
 const positionedPlayers = computed(() => props.players.filter((player) => player.telemetry?.position))
+const activeWorldMap = computed(() => worldMapForServerVersion(props.serverVersion))
 const markers = computed<PlayerMarker[]>(() => positionedPlayers.value.flatMap((player) => {
+  const worldMap = activeWorldMap.value
   const position = player.telemetry?.position
-  if (!position || !isWorldPositionMapped(position)) return []
+  if (!worldMap || !position || !isWorldPositionMapped(worldMap, position)) return []
   return [{
     username: player.username,
     online: player.online,
@@ -48,8 +53,9 @@ const markers = computed<PlayerMarker[]>(() => positionedPlayers.value.flatMap((
   }]
 }))
 const outsideCoverage = computed(() => positionedPlayers.value.filter((player) => {
+  const worldMap = activeWorldMap.value
   const position = player.telemetry?.position
-  return Boolean(position && !isWorldPositionMapped(position))
+  return Boolean(worldMap && position && !isWorldPositionMapped(worldMap, position))
 }))
 const selectedMarker = computed(() => markers.value.find((marker) => marker.username === selectedUsername.value) ?? markers.value[0])
 const heading = computed(() => props.audience === 'admin' ? 'Survivor locations' : 'Online survivor locations')
@@ -74,6 +80,11 @@ function coordinates(position: WorldPosition): string {
   return `${position.x.toFixed(1)}, ${position.y.toFixed(1)}, z${position.z.toFixed(0)}`
 }
 
+function officialMapUrl(position: WorldPosition): string {
+  const worldMap = activeWorldMap.value
+  return worldMap ? officialWorldMapPositionUrl(worldMap, position) : '#'
+}
+
 function clearLoadTimer() {
   window.clearTimeout(loadTimer)
   loadTimer = undefined
@@ -86,28 +97,29 @@ function destroyViewer() {
   mapReady.value = false
 }
 
-function tileSource(): OpenSeadragon.TileSource {
+function tileSource(worldMap: WorldMapDefinition): OpenSeadragon.TileSource {
   const source = new OpenSeadragon.TileSource({
-    width: WORLD_MAP.width,
-    height: WORLD_MAP.height,
-    tileSize: WORLD_MAP.tileSize,
+    width: worldMap.width,
+    height: worldMap.height,
+    tileSize: worldMap.tileSize,
     tileOverlap: 0,
-    minLevel: WORLD_MAP.minLevel,
-    maxLevel: WORLD_MAP.maxLevel,
+    minLevel: worldMap.minLevel,
+    maxLevel: worldMap.maxLevel,
     ready: true,
   })
-  source.getTileUrl = (level, x, y) => worldMapTilePath(level, x, y)
-  source.tileExists = (level, x, y) => isValidWorldMapTile(level, x, y)
+  source.getTileUrl = (level, x, y) => worldMapTilePath(worldMap, level, x, y)
+  source.tileExists = (level, x, y) => isValidWorldMapTile(worldMap, level, x, y)
   return source
 }
 
 function initializeMap() {
-  if (viewer || !mapElement.value || !markers.value.length) return
+  const worldMap = activeWorldMap.value
+  if (viewer || !worldMap || !mapElement.value || !markers.value.length) return
   mapError.value = ''
   mapReady.value = false
   viewer = OpenSeadragon({
     element: mapElement.value,
-    tileSources: [tileSource()],
+    tileSources: [tileSource(worldMap)],
     showNavigationControl: false,
     animationTime: 0.55,
     blendTime: 0.12,
@@ -234,6 +246,13 @@ function zoom(factor: number) {
   viewer.viewport.applyConstraints()
 }
 
+watch(() => activeWorldMap.value?.id, async (nextMapId, previousMapId) => {
+  if (nextMapId === previousMapId) return
+  destroyViewer()
+  await nextTick()
+  initializeMap()
+})
+
 watch(markers, async (nextMarkers, previousMarkers) => {
   if (!nextMarkers.length) {
     destroyViewer()
@@ -283,9 +302,15 @@ onBeforeUnmount(destroyViewer)
       <div><strong>No position reported yet</strong><p>The map will appear after the next deep telemetry snapshot includes a location.</p></div>
     </div>
 
+    <div v-else-if="!activeWorldMap" class="world-map-empty">
+      <span>?</span>
+      <div v-if="serverVersion"><strong>No matching base map</strong><p>The server reports {{ serverVersion }}, but this dashboard supports only Build 42.19 and Build 42.20 maps.</p></div>
+      <div v-else><strong>Waiting for server build</strong><p>The map will appear after telemetry reports whether the server uses Build 42.19 or Build 42.20.</p></div>
+    </div>
+
     <div v-else-if="!markers.length" class="world-map-empty">
       <span>↗</span>
-      <div><strong>Position is outside this base map</strong><p>The coordinate is preserved below, but it cannot be placed on the pinned {{ WORLD_MAP.buildLabel }} map.</p></div>
+      <div><strong>Position is outside this base map</strong><p>The coordinate is preserved below, but it cannot be placed on the {{ activeWorldMap.buildLabel }} map.</p></div>
     </div>
 
     <template v-else>
@@ -330,7 +355,7 @@ onBeforeUnmount(destroyViewer)
           <div><dt>Health</dt><dd>{{ selectedMarker.health !== undefined ? `${selectedMarker.health.toFixed(1)}%` : '—' }}</dd></div>
           <div><dt>Snapshot</dt><dd>{{ relativeTime(selectedMarker.updatedAt) }}</dd></div>
         </dl>
-        <a :href="officialWorldMapPositionUrl(selectedMarker.position)" target="_blank" rel="noreferrer">Open on official map ↗</a>
+        <a :href="officialMapUrl(selectedMarker.position)" target="_blank" rel="noreferrer">Open on official map ↗</a>
       </section>
     </template>
 
@@ -340,7 +365,8 @@ onBeforeUnmount(destroyViewer)
     </div>
 
     <footer class="world-map-attribution">
-      <span>{{ WORLD_MAP.buildLabel }} base map; custom-map areas may appear blank.</span>
+      <span v-if="activeWorldMap">{{ activeWorldMap.buildLabel }} base map selected from server {{ serverVersion }}; custom-map areas may appear blank.</span>
+      <span v-else>Base map unavailable until a supported server build is reported.</span>
       <span>Map rendering: PZmap by CalvyPZ · Project Zomboid imagery © The Indie Stone Ltd.</span>
     </footer>
   </article>
