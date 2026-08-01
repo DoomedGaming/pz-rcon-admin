@@ -108,10 +108,32 @@ export interface PlayerTelemetry {
   hoursSurvived?: number
   profession?: string
   position?: { x: number; y: number; z: number }
+  abilities?: {
+    godMode: boolean
+    invisible: boolean
+    noClip: boolean
+    ghostMode?: boolean
+  }
   vehicle?: { keyId: number; script?: string }
   traits?: string[]
   perks?: Record<string, number>
   inventoryWeight?: number
+}
+
+export interface SandboxSettingState {
+  key: string
+  option: string
+  category: string
+  label: string
+  kind: 'boolean' | 'number' | 'string'
+  value: boolean | number | string
+}
+
+export interface SandboxSettingsSnapshot {
+  configured: boolean
+  settings: SandboxSettingState[]
+  refreshedAt: string
+  warning?: string
 }
 
 export interface PlayerRecord {
@@ -201,6 +223,7 @@ export interface Overview {
     telemetryLastSnapshotAt?: string
     telemetryLastError?: string
     telemetryPlayers: number
+    gameRoles?: string[]
     providerName: string
     providerUrl?: string
   }

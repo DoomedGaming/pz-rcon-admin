@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
-import type { AuditEntry, CommandDefinition, DashboardRole, DashboardSession, DashboardUser, LiveSettingCategory, LiveSettingsSnapshot, LiveSettingState, Overview, PlayerPortalCommunity, PlayerRecord, PlayerSettings, PlayerTheme, SetupStatus, SupportRequest, SupportRequestCategory, SupportRequestStatus } from '@shared/types'
+import type { AuditEntry, CommandDefinition, DashboardRole, DashboardSession, DashboardUser, LiveSettingCategory, LiveSettingsSnapshot, LiveSettingState, Overview, PlayerPortalCommunity, PlayerRecord, PlayerSettings, PlayerTheme, SandboxSettingsSnapshot, SandboxSettingState, SetupStatus, SupportRequest, SupportRequestCategory, SupportRequestStatus } from '@shared/types'
 import { activeSupportRequestStatuses, supportRequestCategories } from '@shared/support-requests'
 import { PLAYER_XP_PERKS } from '@shared/perks'
 import { isBootstrapAdminPath, isStaffConsolePath, PLAYER_PORTAL_PATH } from '@shared/routes'
@@ -10,7 +10,8 @@ import PlayerPortal from './PlayerPortal.vue'
 import SetupView from './SetupView.vue'
 import ZomboidMap from './ZomboidMap.vue'
 
-type Page = 'overview' | 'players' | 'requests' | 'users' | 'configuration' | 'server' | 'world' | 'settings' | 'mods' | 'console' | 'audit'
+type Page = 'overview' | 'players' | 'requests' | 'users' | 'configuration' | 'server' | 'world' | 'settings' | 'sandbox' | 'mods' | 'console' | 'audit'
+type AbilityKey = 'godMode' | 'invisible' | 'noClip'
 const adminConsoleMode = isStaffConsolePath(window.location.pathname)
 const bootstrapAdminMode = isBootstrapAdminPath(window.location.pathname)
 const setupMode = ref(window.location.pathname === '/setup')
@@ -27,11 +28,18 @@ const allNavItems: Array<{ id: Page; label: string; icon: string; adminOnly?: bo
   { id: 'server', label: 'Server control', icon: 'server', adminOnly: true },
   { id: 'world', label: 'World director', icon: 'world', adminOnly: true },
   { id: 'settings', label: 'Live settings', icon: 'sliders', adminOnly: true },
+  { id: 'sandbox', label: 'Sandbox live', icon: 'sliders', adminOnly: true },
   { id: 'mods', label: 'Mods & config', icon: 'sliders', adminOnly: true },
   { id: 'console', label: 'RCON console', icon: 'terminal', adminOnly: true },
   { id: 'audit', label: 'Audit log', icon: 'list', adminOnly: true },
 ]
 const dashboardRoleOptions: DashboardRole[] = ['user', 'moderator', 'admin']
+const defaultInGameRoleOptions = ['priority', 'observer', 'gm', 'moderator', 'admin']
+const abilityOptions: Array<{ key: AbilityKey; label: string }> = [
+  { key: 'godMode', label: 'God mode' },
+  { key: 'invisible', label: 'Invisible' },
+  { key: 'noClip', label: 'No clip' },
+]
 
 const page = ref<Page>('overview')
 const loading = ref(true)
@@ -59,6 +67,12 @@ const liveSettings = ref<LiveSettingState[]>([])
 const liveSettingDrafts = ref<Record<string, string | boolean>>({})
 const liveSettingsWarning = ref('')
 const liveSettingsRefreshedAt = ref('')
+const sandboxSettings = ref<SandboxSettingState[]>([])
+const sandboxSettingDrafts = ref<Record<string, string | boolean>>({})
+const sandboxSettingsConfigured = ref(false)
+const sandboxSettingsWarning = ref('')
+const sandboxSettingsRefreshedAt = ref('')
+const sandboxLiveSearch = ref('')
 const supportRequests = ref<SupportRequest[]>([])
 const selectedRequestId = ref<string | null>(null)
 const requestDialogOpen = ref(false)
@@ -72,6 +86,8 @@ const busy = ref('')
 const announcement = ref('')
 const worldTarget = ref('')
 const hordeCount = ref('25')
+const rainIntensity = ref('50')
+const stormDuration = ref('24')
 const zombieClearX = ref('')
 const zombieClearY = ref('')
 const zombieClearZ = ref('0')
@@ -93,12 +109,25 @@ const settingsSearch = ref('')
 const consoleCommand = ref('')
 const consoleConfirm = ref('')
 const consoleLines = ref<Array<{ at: string; command: string; output: string; error?: boolean }>>([])
-const godModeEnabled = ref<Record<string, boolean>>({})
+const abilityOverrides = ref<Record<string, Partial<Record<AbilityKey, { enabled: boolean; observedAt?: string }>>>>({})
+const playerRoleDrafts = ref<Record<string, string>>({})
 let refreshTimer: number | undefined
 let toastTimer: number | undefined
 let pendingRequestDeepLink = new URLSearchParams(window.location.search).get('request')?.trim().slice(0, 128) || undefined
 
 const isAdmin = computed(() => sessionRole.value === 'admin')
+const inGameRoleOptions = computed(() => {
+  const reported = overview.value?.integrations.gameRoles ?? []
+  const current = overview.value?.players.map((player) => player.accessLevel ?? '') ?? []
+  const candidates = reported.length ? [...reported, ...current] : [...defaultInGameRoleOptions, ...current]
+  const roles = new Map<string, string>()
+  for (const role of candidates) {
+    const normalized = role.trim()
+    if (!normalized || ['banned', 'user', 'none'].includes(normalized.toLowerCase())) continue
+    if (!roles.has(normalized.toLowerCase())) roles.set(normalized.toLowerCase(), normalized)
+  }
+  return ['none', ...roles.values()]
+})
 const navItems = computed(() => allNavItems.filter((item) => !item.adminOnly || isAdmin.value))
 const brandName = computed(() => community.value.name)
 const brandInitials = computed(() => community.value.initials)
@@ -181,6 +210,13 @@ async function loadAll(silent = false) {
       !isAdmin.value || Object.keys(sandbox.value).length ? Promise.resolve({ sandbox: sandbox.value }) : api<{ sandbox: Record<string, string | number | boolean> }>('/api/config'),
       api<SupportRequest[]>('/api/requests'),
     ])
+    for (const player of nextOverview.players) {
+      const overrides = abilityOverrides.value[player.username]
+      if (!overrides) continue
+      for (const key of Object.keys(overrides) as AbilityKey[]) {
+        if (player.telemetry?.updatedAt && player.telemetry.updatedAt !== overrides[key]?.observedAt) delete overrides[key]
+      }
+    }
     overview.value = nextOverview
     community.value = nextOverview.community
     commands.value = nextCommands
@@ -371,6 +407,44 @@ async function changeLiveSetting(setting: LiveSettingState, value: string | bool
   }
 }
 
+async function loadSandboxSettings() {
+  if (!isAdmin.value) return
+  try {
+    const snapshot = await api<SandboxSettingsSnapshot>('/api/admin/sandbox-settings')
+    sandboxSettings.value = snapshot.settings
+    sandboxSettingsConfigured.value = snapshot.configured
+    sandboxSettingsWarning.value = snapshot.warning ?? ''
+    sandboxSettingsRefreshedAt.value = snapshot.refreshedAt
+    sandboxSettingDrafts.value = Object.fromEntries(snapshot.settings.map((setting) => [
+      setting.key,
+      setting.kind === 'boolean' ? Boolean(setting.value) : String(setting.value),
+    ]))
+  } catch (error) {
+    notify(error instanceof Error ? error.message : 'Could not load SandboxVars controls', true)
+  }
+}
+
+async function changeSandboxSetting(setting: SandboxSettingState) {
+  if (!window.confirm(`${setting.option}\n\nCurrent value: ${setting.value}\nNew value: ${sandboxSettingDrafts.value[setting.key]}\n\nApply this to the running world and save SandboxVars.lua?`)) return
+  busy.value = `sandbox-${setting.key}`
+  try {
+    const result = await api<{ setting: SandboxSettingState; message: string }>(`/api/admin/sandbox-settings/${encodeURIComponent(setting.key)}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ value: sandboxSettingDrafts.value[setting.key], confirm: setting.key }),
+    })
+    sandboxSettings.value = sandboxSettings.value.map((entry) => entry.key === setting.key ? result.setting : entry)
+    sandboxSettingDrafts.value[setting.key] = result.setting.kind === 'boolean' ? Boolean(result.setting.value) : String(result.setting.value)
+    sandbox.value[result.setting.key] = result.setting.value
+    notify(`${result.setting.option} updated live and saved`)
+    await loadAll(true)
+  } catch (error) {
+    sandboxSettingDrafts.value[setting.key] = setting.kind === 'boolean' ? Boolean(setting.value) : String(setting.value)
+    notify(error instanceof Error ? error.message : 'SandboxVars change failed', true)
+  } finally {
+    busy.value = ''
+  }
+}
+
 async function pollNow() {
   busy.value = 'poll'
   try {
@@ -422,14 +496,20 @@ async function playerAction(username: string, action: string, payload: Record<st
   if (['kick', 'ban', 'remove-whitelist'].includes(action) && !window.confirm(`${action === 'ban' ? 'Ban' : action === 'kick' ? 'Kick' : 'Remove from whitelist'} ${username}?`)) return false
   if (action === 'teleport-coordinates' && !window.confirm(`Teleport ${username} to ${payload.x}, ${payload.y}, z${payload.z}?\n\nMake sure the destination is safe and loaded.`)) return false
   if (action === 'teleport-player' && !window.confirm(`Teleport ${username} to ${payload.destination}?`)) return false
+  if (action === 'access-level' && !window.confirm(`Change ${username}'s in-game Project Zomboid role to ${payload.level}?\n\nThis is separate from dashboard access and may grant powerful in-game capabilities.`)) return false
+  if (action === 'clear-map-symbols' && !window.confirm(`Permanently remove all map symbols for ${username}?`)) return false
   busy.value = `player-${action}`
   try {
     const result = await api<{ output: string; teleportMethod?: 'coordinates' | 'player' }>(`/api/players/${encodeURIComponent(username)}/actions`, {
       method: 'POST',
-      body: JSON.stringify({ action, payload, confirm: ['ban', 'teleport-coordinates', 'teleport-player'].includes(action) ? username : undefined }),
+      body: JSON.stringify({ action, payload, confirm: ['ban', 'teleport-coordinates', 'teleport-player', 'access-level', 'clear-map-symbols'].includes(action) ? username : undefined }),
     })
-    if (action === 'godmode') {
-      notify(`God mode ${payload.enabled === false ? 'disabled' : 'enabled'} for ${username}`)
+    if (['godmode', 'invisible', 'noclip'].includes(action)) {
+      notify(`${action === 'godmode' ? 'God mode' : action === 'invisible' ? 'Invisible' : 'No clip'} ${payload.enabled === false ? 'disabled' : 'enabled'} for ${username}`)
+    } else if (action === 'access-level') {
+      notify(`${username}'s in-game role is now ${payload.level}`)
+    } else if (action === 'voiceban') {
+      notify(`${username}'s voice access ${payload.enabled === false ? 'restored' : 'blocked'}`)
     } else if (action === 'addxp') {
       const perk = PLAYER_XP_PERKS.find((item) => item.value === payload.perk)
       notify(`${payload.amount} ${perk?.label ?? payload.perk} XP granted to ${username}`)
@@ -454,9 +534,27 @@ async function playerAction(username: string, action: string, payload: Record<st
   }
 }
 
-async function toggleGodMode(username: string) {
-  const enabled = !godModeEnabled.value[username]
-  if (await playerAction(username, 'godmode', { enabled })) godModeEnabled.value[username] = enabled
+function abilityEnabled(player: PlayerRecord, key: AbilityKey): boolean {
+  return abilityOverrides.value[player.username]?.[key]?.enabled ?? Boolean(player.telemetry?.abilities?.[key])
+}
+
+async function toggleAbility(player: PlayerRecord, key: AbilityKey) {
+  const action = key === 'godMode' ? 'godmode' : key === 'noClip' ? 'noclip' : 'invisible'
+  const enabled = !abilityEnabled(player, key)
+  if (await playerAction(player.username, action, { enabled })) {
+    abilityOverrides.value[player.username] ??= {}
+    abilityOverrides.value[player.username][key] = { enabled, observedAt: player.telemetry?.updatedAt }
+  }
+}
+
+function setPlayerRoleDraft(username: string, event: Event) {
+  playerRoleDrafts.value[username] = (event.target as HTMLSelectElement).value
+}
+
+function playerInGameRole(player: PlayerRecord): string {
+  const accessLevel = player.accessLevel?.trim()
+  if (!accessLevel || ['user', 'none'].includes(accessLevel.toLowerCase())) return 'none'
+  return inGameRoleOptions.value.find((role) => role.toLowerCase() === accessLevel.toLowerCase()) ?? accessLevel
 }
 
 function togglePlayer(username: string) {
@@ -607,11 +705,18 @@ const liveSettingCategories = computed(() => {
   const categories: LiveSettingCategory[] = ['Access', 'Chat', 'PvP', 'Safehouses', 'Visibility', 'Factions', 'Voice', 'Anti-grief', 'Maintenance']
   return categories.map((category) => ({ category, settings: liveSettings.value.filter((setting) => setting.category === category) }))
 })
+const sandboxSettingCategories = computed(() => {
+  const query = sandboxLiveSearch.value.trim().toLowerCase()
+  const filtered = sandboxSettings.value.filter((setting) => !query || `${setting.option} ${setting.label} ${setting.value}`.toLowerCase().includes(query))
+  const categories = [...new Set(filtered.map((setting) => setting.category))]
+  return categories.map((category) => ({ category, settings: filtered.filter((setting) => setting.category === category) }))
+})
 
 watch(page, (nextPage) => {
   if (nextPage !== 'requests' && requestDialogOpen.value) closeRequestDialog()
   if (nextPage === 'users') void loadDashboardUsers()
   if (nextPage === 'settings') void loadLiveSettings()
+  if (nextPage === 'sandbox') void loadSandboxSettings()
   if (nextPage === 'audit') void loadAll(true)
 })
 
@@ -859,7 +964,31 @@ onBeforeUnmount(() => {
                     <div class="player-detail-column admin-column">
                       <div class="player-detail-heading"><div><p class="eyebrow">RCON controls</p><h3>{{ isAdmin ? 'Administrator tools' : 'Moderator tools' }}</h3></div></div>
                       <template v-if="isAdmin">
-                      <section class="player-detail-section"><h3>Abilities & events</h3><div class="ability-grid"><button :class="{ active: godModeEnabled[playerItem.username] }" :aria-pressed="Boolean(godModeEnabled[playerItem.username])" :disabled="busy.startsWith('player-')" @click="toggleGodMode(playerItem.username)">{{ godModeEnabled[playerItem.username] ? 'Disable god mode' : 'Enable god mode' }}</button><button :disabled="busy.startsWith('player-')" @click="playerAction(playerItem.username, 'invisible')">Invisible</button><button :disabled="busy.startsWith('player-')" @click="playerAction(playerItem.username, 'noclip')">No clip</button><button :disabled="busy.startsWith('player-')" @click="playerAction(playerItem.username, 'lightning')">Lightning</button><button :disabled="busy.startsWith('player-')" @click="playerAction(playerItem.username, 'horde', { count: hordeCount })">Horde × {{ hordeCount }}</button></div></section>
+                      <section class="player-detail-section ability-section">
+                        <div class="player-detail-heading"><div><h3>Live abilities</h3><p>States come from the server companion, not this browser.</p></div><small>{{ playerItem.telemetry?.abilities ? `Observed ${relativeTime(playerItem.telemetry.updatedAt)}` : 'State unavailable' }}</small></div>
+                        <div v-if="playerItem.telemetry?.abilities" class="ability-state-list">
+                          <span :class="{ active: abilityEnabled(playerItem, 'godMode') }">God mode <b>{{ abilityEnabled(playerItem, 'godMode') ? 'ON' : 'OFF' }}</b></span>
+                          <span :class="{ active: abilityEnabled(playerItem, 'invisible') }">Invisible <b>{{ abilityEnabled(playerItem, 'invisible') ? 'ON' : 'OFF' }}</b></span>
+                          <span :class="{ active: abilityEnabled(playerItem, 'noClip') }">No clip <b>{{ abilityEnabled(playerItem, 'noClip') ? 'ON' : 'OFF' }}</b></span>
+                          <span v-if="playerItem.telemetry.abilities.ghostMode !== undefined" :class="{ active: playerItem.telemetry.abilities.ghostMode }">Ghost mode <b>{{ playerItem.telemetry.abilities.ghostMode ? 'ON' : 'OFF' }}</b></span>
+                        </div>
+                        <p v-else class="ability-state-unavailable">Update the telemetry companion to read authoritative ability state.</p>
+                        <div class="ability-grid">
+                          <button v-for="ability in abilityOptions" :key="ability.key" :class="{ active: abilityEnabled(playerItem, ability.key) }" :aria-pressed="abilityEnabled(playerItem, ability.key)" :disabled="busy.startsWith('player-') || !playerItem.online || !playerItem.telemetry?.abilities" @click="toggleAbility(playerItem, ability.key)">{{ abilityEnabled(playerItem, ability.key) ? `Disable ${ability.label}` : `Enable ${ability.label}` }}</button>
+                          <button :disabled="busy.startsWith('player-') || !playerItem.online" @click="playerAction(playerItem.username, 'lightning')">Lightning</button>
+                          <button :disabled="busy.startsWith('player-') || !playerItem.online" @click="playerAction(playerItem.username, 'horde', { count: hordeCount })">Horde × {{ hordeCount }}</button>
+                        </div>
+                      </section>
+                      <section class="player-detail-section role-management-section">
+                        <div class="player-detail-heading"><div><h3>In-game role</h3><p>Separate from dashboard authorization. Use Player unless temporary in-game tools are actually needed.</p></div><span class="source-badge">{{ playerItem.accessLevel || 'player' }}</span></div>
+                        <div class="field-combo">
+                          <select :value="playerRoleDrafts[playerItem.username] ?? playerInGameRole(playerItem)" :aria-label="`In-game role for ${playerItem.username}`" @change="setPlayerRoleDraft(playerItem.username, $event)">
+                            <option v-for="roleOption in inGameRoleOptions" :key="roleOption" :value="roleOption">{{ roleOption === 'none' ? 'Player (no elevated role)' : roleOption }}</option>
+                          </select>
+                          <button class="button outline" :disabled="busy.startsWith('player-')" @click="playerAction(playerItem.username, 'access-level', { level: playerRoleDrafts[playerItem.username] ?? playerInGameRole(playerItem) })">Apply in-game role</button>
+                        </div>
+                        <div class="secondary-admin-actions"><button class="button outline compact" :disabled="busy.startsWith('player-')" @click="playerAction(playerItem.username, 'voiceban', { enabled: true })">Block voice</button><button class="button outline compact" :disabled="busy.startsWith('player-')" @click="playerAction(playerItem.username, 'voiceban', { enabled: false })">Restore voice</button><button class="button danger-button compact" :disabled="busy.startsWith('player-')" @click="playerAction(playerItem.username, 'clear-map-symbols')">Clear map symbols</button></div>
+                      </section>
                       <section class="player-detail-section teleport-section">
                         <div class="teleport-heading">
                           <div><h3>Teleport</h3><p>Move this online survivor to exact world coordinates or another connected survivor. Fresh telemetry positions use the reliable coordinate command.</p></div>
@@ -1025,6 +1154,16 @@ onBeforeUnmount(() => {
                   <button :class="['button', worldCommand.impact === 'danger' ? 'danger-button' : 'outline']" :disabled="busy === worldCommand.id" @click="runCommand(worldCommand.id)">Trigger</button>
                 </article>
               </div>
+              <article class="panel weather-control-panel">
+                <div class="panel-heading"><div><p class="eyebrow">Climate manager</p><h2>Live weather</h2><p>Use the same Build 42 weather commands available to in-game administrators.</p></div><span class="source-badge live">RCON</span></div>
+                <div class="weather-controls">
+                  <label>Rain intensity (1–100)<input v-model="rainIntensity" type="number" min="1" max="100" step="1" /></label>
+                  <button class="button outline" :disabled="busy === 'start-rain'" @click="runCommand('start-rain', { intensity: rainIntensity })">Start rain</button>
+                  <label>Storm duration (in-game hours)<input v-model="stormDuration" type="number" min="1" max="168" step="1" /></label>
+                  <button class="button outline" :disabled="busy === 'start-storm'" @click="runCommand('start-storm', { duration: stormDuration })">Start storm</button>
+                  <button class="button danger-button" :disabled="busy === 'stop-weather'" @click="runCommand('stop-weather')">Stop weather</button>
+                </div>
+              </article>
             </section>
             <aside class="panel coordinate-panel">
               <p class="eyebrow">Targeted event</p><h2>Choose a survivor</h2><p>Build 42 RCON targets lightning and horde events by online username.</p>
@@ -1086,6 +1225,38 @@ onBeforeUnmount(() => {
               </div>
             </article>
           </div>
+        </template>
+
+        <template v-else-if="page === 'sandbox'">
+          <div class="section-intro">
+            <div><p class="eyebrow">Persistent runtime world controls</p><h2>Live SandboxVars</h2><p>Each change is validated by Project Zomboid, applied to the running world, synchronized to connected clients, and saved back to the server's SandboxVars.lua.</p></div>
+            <button class="button outline" :disabled="busy.startsWith('sandbox-')" @click="loadSandboxSettings">Refresh SandboxVars</button>
+          </div>
+          <div class="live-settings-status">
+            <span :class="['status-dot', { live: sandboxSettingsConfigured }]" ></span>
+            <strong>{{ sandboxSettingsConfigured ? 'Control bridge ready' : 'Control bridge unavailable' }}</strong>
+            <small v-if="sandboxSettingsRefreshedAt">Checked {{ relativeTime(sandboxSettingsRefreshedAt) }}</small>
+            <b>NO SERVER RESTART</b>
+          </div>
+          <p v-if="sandboxSettingsWarning" class="settings-warning" role="status">{{ sandboxSettingsWarning }}</p>
+          <article class="panel sandbox-search-panel"><label>Find a SandboxVars option<input v-model="sandboxLiveSearch" type="search" placeholder="ZombieLore, loot, vehicles, farming…" /></label><small>{{ sandboxSettings.length }} scalar settings loaded</small></article>
+          <div v-if="!sandboxSettingCategories.length" class="empty-state"><strong>No matching SandboxVars options.</strong><span>Refresh after the server configuration bridge has loaded SandboxVars.lua.</span></div>
+          <div v-else class="live-settings-groups sandbox-settings-groups">
+            <article v-for="group in sandboxSettingCategories" :key="group.category" class="panel live-settings-group">
+              <div class="panel-heading"><div><p class="eyebrow">SandboxOptions</p><h2>{{ group.category }}</h2></div><span>{{ group.settings.length }} controls</span></div>
+              <div class="live-setting-list">
+                <div v-for="setting in group.settings" :key="setting.key" class="live-setting-row sandbox-setting-row">
+                  <div class="live-setting-copy"><strong>{{ setting.label }}</strong><code>{{ setting.option }}</code><small>Current: {{ setting.value }}</small></div>
+                  <div class="sandbox-value-control">
+                    <button v-if="setting.kind === 'boolean'" type="button" :class="['setting-toggle', { active: Boolean(sandboxSettingDrafts[setting.key]) }]" :aria-pressed="Boolean(sandboxSettingDrafts[setting.key])" :disabled="!sandboxSettingsConfigured || busy === `sandbox-${setting.key}`" @click="sandboxSettingDrafts[setting.key] = !Boolean(sandboxSettingDrafts[setting.key])"><span></span>{{ Boolean(sandboxSettingDrafts[setting.key]) ? 'Enabled' : 'Disabled' }}</button>
+                    <input v-else v-model="sandboxSettingDrafts[setting.key]" :type="setting.kind === 'number' ? 'number' : 'text'" :aria-label="setting.option" />
+                    <button class="button outline compact" :disabled="!sandboxSettingsConfigured || busy === `sandbox-${setting.key}` || (setting.kind !== 'string' && sandboxSettingDrafts[setting.key] === '')" @click="changeSandboxSetting(setting)">{{ busy === `sandbox-${setting.key}` ? 'Applying…' : 'Apply' }}</button>
+                  </div>
+                </div>
+              </div>
+            </article>
+          </div>
+          <article class="panel warning-panel"><div class="warning-icon">!</div><div><strong>World-state boundary</strong><p>The game accepts these changes live, but options that only affect world generation or initial character creation cannot retroactively rebuild existing cells or characters.</p></div></article>
         </template>
 
         <template v-else-if="page === 'mods'">

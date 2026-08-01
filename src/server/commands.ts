@@ -8,6 +8,9 @@ export const commandDefinitions: CommandDefinition[] = [
   { id: 'announce', label: 'Broadcast message', description: 'Send a message to everyone online.', category: 'server', command: 'servermsg {{message}}', args: [{ name: 'message', label: 'Message', required: true, placeholder: 'Server restart in 10 minutes' }], impact: 'safe' },
   { id: 'helicopter', label: 'Helicopter event', description: 'Trigger the helicopter event.', category: 'world', command: 'chopper', impact: 'caution' },
   { id: 'gunshot', label: 'Gunshot event', description: 'Trigger a distant gunshot sound.', category: 'world', command: 'gunshot', impact: 'caution' },
+  { id: 'start-rain', label: 'Start rain', description: 'Start rain at a chosen intensity from 1 to 100 percent.', category: 'weather', command: 'startrain {{intensity}}', args: [{ name: 'intensity', label: 'Intensity', required: true }], impact: 'caution' },
+  { id: 'start-storm', label: 'Start thunderstorm', description: 'Start a thunderstorm for a chosen number of in-game hours.', category: 'weather', command: 'startstorm {{duration}}', args: [{ name: 'duration', label: 'Duration (hours)', required: true }], impact: 'caution' },
+  { id: 'stop-weather', label: 'Stop weather', description: 'Stop active rain and weather effects.', category: 'weather', command: 'stopweather', impact: 'safe' },
   { id: 'lightning', label: 'Lightning strike', description: 'Trigger lightning on a named online survivor.', category: 'world', command: 'lightning {{username}}', args: [{ name: 'username', label: 'Username', required: true }], impact: 'caution' },
   { id: 'create-horde', label: 'Create horde', description: 'Spawn a zombie horde near a named online survivor.', category: 'world', command: 'createhorde {{count}} {{username}}', args: [{ name: 'count', label: 'Count', required: true }, { name: 'username', label: 'Username', required: true }], impact: 'danger' },
   {
@@ -68,6 +71,12 @@ export function buildDefinedCommand(id: string, args: Record<string, unknown> = 
     if (!username) throw new Error('Username is required')
     return { definition, command: `createhorde ${count} ${quote(username)}` }
   }
+  if (definition.id === 'start-rain') {
+    return { definition, command: `startrain ${boundedInteger(args.intensity, 'Rain intensity', 1, 100)}` }
+  }
+  if (definition.id === 'start-storm') {
+    return { definition, command: `startstorm ${boundedInteger(args.duration, 'Storm duration', 1, 168)}` }
+  }
   let command = definition.command
   for (const argument of definition.args ?? []) {
     const value = clean(args[argument.name])
@@ -77,7 +86,7 @@ export function buildDefinedCommand(id: string, args: Record<string, unknown> = 
   return { definition, command }
 }
 
-export type PlayerAction = 'kick' | 'ban' | 'godmode' | 'invisible' | 'noclip' | 'lightning' | 'horde' | 'additem' | 'addxp' | 'vehicle' | 'key' | 'teleport-coordinates' | 'teleport-player' | 'remove-whitelist'
+export type PlayerAction = 'kick' | 'ban' | 'godmode' | 'invisible' | 'noclip' | 'lightning' | 'horde' | 'additem' | 'addxp' | 'vehicle' | 'key' | 'teleport-coordinates' | 'teleport-player' | 'voiceban' | 'clear-map-symbols' | 'access-level' | 'remove-whitelist'
 export type ModeratorPlayerAction = Extract<PlayerAction, 'kick' | 'ban' | 'remove-whitelist'>
 
 const moderatorPlayerActions = new Set<PlayerAction>(['kick', 'ban', 'remove-whitelist'])
@@ -130,6 +139,13 @@ export function buildPlayerCommand(username: string, action: PlayerAction, paylo
       if (!Number.isInteger(keyId) || keyId < 0 || keyId > 2_147_483_647) throw new Error('Vehicle key ID must be a whole number')
       return `addkey ${user} ${quote(keyId)} ${quote(payload.name || 'Issued by admin')}`
     }
+    case 'voiceban': return `voiceban ${user} -${payload.enabled === false ? 'false' : 'true'}`
+    case 'clear-map-symbols': return `removemapsymbolsforuser ${user}`
+    case 'access-level': {
+      const level = clean(payload.level)
+      if (!/^\w{1,64}$/.test(level)) throw new Error('Choose a valid in-game role')
+      return `setaccesslevel ${user} ${level}`
+    }
     case 'teleport-coordinates': {
       const x = teleportCoordinate(payload.x, 'X coordinate', 1_000_000)
       const y = teleportCoordinate(payload.y, 'Y coordinate', 1_000_000)
@@ -178,6 +194,9 @@ export function validatePlayerActionOutput(action: PlayerAction, output: string)
   }
   if (action === 'additem' && /\bitem\b.*\bdoesn't exist\b/i.test(output)) {
     throw new Error('Project Zomboid could not find that item')
+  }
+  if (action === 'access-level' && /\b(?:role|access level)\b.*\b(?:not found|doesn't exist|invalid)\b/i.test(output)) {
+    throw new Error('Project Zomboid rejected that in-game role')
   }
   if (action === 'vehicle' && /\bunknown vehicle script\b|\binvalid location\b|\bi can not spawn\b/i.test(output)) {
     throw new Error('Project Zomboid rejected that vehicle spawn')

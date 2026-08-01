@@ -2,7 +2,7 @@ import { createHash, randomBytes, timingSafeEqual } from 'node:crypto'
 import { existsSync } from 'node:fs'
 import { resolve } from 'node:path'
 import express, { type Request, type Response } from 'express'
-import type { DashboardRole, Overview, PlayerPortalLanding, PlayerPortalOverview, PlayerTelemetry } from '../shared/types.js'
+import type { DashboardRole, Overview, PlayerPortalLanding, PlayerPortalOverview, PlayerTelemetry, SandboxSettingsSnapshot } from '../shared/types.js'
 import { isSupportRequestStatus, normalizeSupportRequestInput, normalizeSupportRequestMessage } from '../shared/support-requests.js'
 import { isValidWorldMapTile, worldMapUpstreamTileUrl } from '../shared/world-map.js'
 import { createAuth, createPlayerAuth } from './auth.js'
@@ -19,6 +19,7 @@ import { editableSecureConfigState, updateEditableSecureConfig } from './configu
 import { buildInitialSecureConfig, loadSecureConfig, saveSecureConfig } from './secure-config.js'
 import { normalizePlayerTelemetry, TelemetryFtpBridge } from './telemetry.js'
 import { ServerConfigFtpBridge } from './server-config-ftp.js'
+import { normalizeSandboxValue, SandboxControlBridge, sandboxSettingsFromValues } from './sandbox-control.js'
 import { DiscordModerationNotifier, type ModerationNotification } from './discord-moderation.js'
 
 const app = express()
@@ -31,7 +32,9 @@ const liveSettings = new LiveSettingsService(appConfig.configSummary.values, sto
 const discordModeration = new DiscordModerationNotifier(appConfig.discordModerationWebhookUrl, appConfig.adminPublicUrl)
 const loginAttempts = new Map<string, { count: number; resetAt: number }>()
 const playerLoginAttempts = new Map<string, { count: number; resetAt: number }>()
+let availableGameRoles: string[] = []
 const telemetryBridge = new TelemetryFtpBridge(appConfig.telemetryFtp, (snapshot, observedAt) => {
+  availableGameRoles = snapshot.roles
   store.updateTelemetryBatch(snapshot.players, observedAt)
 })
 const serverConfigBridge = new ServerConfigFtpBridge(appConfig.serverConfigFtp, (update) => {
@@ -42,6 +45,10 @@ const serverConfigBridge = new ServerConfigFtpBridge(appConfig.serverConfigFtp, 
     liveSettings.importConfigured(summary.values)
   }
   if (update.sandboxText !== undefined) appConfig.sandboxText = update.sandboxText
+})
+const sandboxControl = new SandboxControlBridge({
+  ...appConfig.telemetryFtp,
+  telemetryPath: appConfig.telemetryFtp.remotePath,
 })
 let setupToken = appConfig.secureConfig.configured ? '' : randomBytes(24).toString('base64url')
 let setupSaved = false
@@ -482,6 +489,7 @@ app.get('/api/overview', (request, response) => {
       telemetryLastSnapshotAt: telemetryState.lastSnapshotAt,
       telemetryLastError: telemetryState.lastError,
       telemetryPlayers: telemetryState.playerCount,
+      gameRoles: availableGameRoles,
       providerName: appConfig.provider.name,
       providerUrl: appConfig.provider.url || undefined,
     },
@@ -597,7 +605,7 @@ app.post('/api/players/:username/actions', async (request, response) => {
     if (identity.role !== 'admin' && !isModeratorPlayerAction(action)) {
       return response.status(403).json({ error: 'Administrator access required for this player action' })
     }
-    if (['ban', 'teleport-coordinates', 'teleport-player'].includes(action) && request.body?.confirm !== username) {
+    if (['ban', 'teleport-coordinates', 'teleport-player', 'access-level', 'clear-map-symbols'].includes(action) && request.body?.confirm !== username) {
       return response.status(400).json({ error: `Confirmation must equal ${username}` })
     }
     if (action === 'teleport-coordinates' || action === 'teleport-player') {
@@ -670,6 +678,51 @@ app.patch('/api/admin/live-settings/:key', requireDashboardRole('admin'), async 
     response.json({ setting, output })
   } catch (error) {
     store.addAudit({ category: 'server', action: 'live-setting', target: key, success: false, detail: errorMessage(error) })
+    response.status(400).json({ error: errorMessage(error) })
+  }
+})
+
+app.get('/api/admin/sandbox-settings', requireDashboardRole('admin'), (_request, response) => {
+  const values = appConfig.sandboxText ? parseSandboxLua(appConfig.sandboxText) : {}
+  const snapshot: SandboxSettingsSnapshot = {
+    configured: sandboxControl.isConfigured(),
+    settings: sandboxSettingsFromValues(values),
+    refreshedAt: new Date().toISOString(),
+    warning: !appConfig.sandboxText
+      ? 'SandboxVars.lua has not been loaded from the server yet.'
+      : !sandboxControl.isConfigured()
+        ? 'Live SandboxVars changes require the telemetry FTP/FTPS connection.'
+        : undefined,
+  }
+  response.json(snapshot)
+})
+
+app.patch('/api/admin/sandbox-settings/:key', requireDashboardRole('admin'), async (request, response) => {
+  const key = String(request.params.key)
+  try {
+    if (request.body?.confirm !== key) return response.status(400).json({ error: `Confirmation must equal ${key}` })
+    const values = appConfig.sandboxText ? parseSandboxLua(appConfig.sandboxText) : {}
+    const setting = sandboxSettingsFromValues(values).find((entry) => entry.key === key)
+    if (!setting) throw new Error('This SandboxVars option is not present in the loaded server configuration')
+    const requestedValue = normalizeSandboxValue(setting, request.body?.value)
+    const result = await sandboxControl.apply(setting.option, requestedValue)
+    const appliedValue = normalizeSandboxValue(setting, result.value)
+    setting.value = setting.kind === 'boolean'
+      ? appliedValue === 'true'
+      : setting.kind === 'number'
+        ? Number(appliedValue)
+        : appliedValue
+    await serverConfigBridge.poll()
+    store.addAudit({
+      category: 'server',
+      action: 'sandbox-setting',
+      target: key,
+      success: true,
+      detail: `${dashboardActor(request)} set ${setting.option} to ${appliedValue} live and persisted it`,
+    })
+    response.json({ setting, message: result.message, appliedAt: result.appliedAt })
+  } catch (error) {
+    store.addAudit({ category: 'server', action: 'sandbox-setting', target: key, success: false, detail: errorMessage(error) })
     response.status(400).json({ error: errorMessage(error) })
   }
 })

@@ -15,8 +15,10 @@ See [CHANGELOG.md](CHANGELOG.md) for release-by-release changes. PZ RCON Admin a
 | Area | Available now | Data source |
 | --- | --- | --- |
 | Server status | RCON connectivity, online count, poll health | RCON |
-| Players | Online list, teleport, kick, ban, whitelist removal, god mode, invisibility, no-clip | RCON |
+| Players | Online list, teleport, kick, ban, whitelist removal, authoritative god/invisible/no-clip state and toggles | RCON + telemetry companion |
 | Player assistance | Give item, grant XP, spawn vehicle, give key, targeted lightning/horde | RCON |
+| In-game roles | Assign the server's current built-in or custom role, or return a survivor to normal Player access | RCON + telemetry companion |
+| Secondary player controls | Block/restore voice and clear a survivor's map symbols | RCON |
 | Player history | First/last observed, session count, observed online time | Dashboard polling |
 | Player portal | Read-only access to a survivor's own history and character telemetry | PZ account DB + dashboard data |
 | Request Center | Private self-service help requests with staff assignment, replies, and status tracking | Local dashboard store + optional telemetry |
@@ -25,9 +27,10 @@ See [CHANGELOG.md](CHANGELOG.md) for release-by-release changes. PZ RCON Admin a
 | Dashboard roles | User by default, with explicit Moderator and Admin promotion | Local dashboard store |
 | Communication | Server-wide announcements | RCON |
 | Server control | Save, reload options, check mod updates, safe save-then-shutdown | RCON |
-| World control | Helicopter, gunshot, player-targeted lightning/hordes, coordinate-based zombie removal | RCON |
+| World control | Helicopter, gunshot, live rain/storm controls, player-targeted lightning/hordes, coordinate-based zombie removal | RCON |
 | Configuration | Searchable `servertest.ini` and `SandboxVars.lua`, with secret redaction | Auto-refreshed FTP/FTPS files or read-only local overrides |
 | Live settings | Allowlisted access, chat, PvP, safehouse, visibility, faction, voice, anti-grief, and save options with no restart | RCON `changeoption` |
+| Live SandboxVars | Search, validate, apply, persist, and synchronize scalar `SandboxVars.lua` options without restarting | Telemetry FTP control bridge |
 | Mods | Mod IDs, Workshop IDs, and direct Workshop links | Auto-refreshed `servertest.ini` |
 | Audit | Timestamped command and action history with secret-bearing commands redacted | Local dashboard store |
 | Provider operations | Configurable link to the operator's hosting panel | Operator configuration |
@@ -62,7 +65,7 @@ PZ_DISCORD_MOD_WEBHOOK_URL=https://discord.com/api/webhooks/your-webhook-id/your
 
 Players can independently choose Green, Amber, Blue, Violet, or Rose in their account settings. Their choice follows them into the staff console if they are promoted.
 
-The command inventory was verified against the live Build 42 server's own `help` response. It currently reports 42 RCON commands. The raw console exposes that authoritative help text, while the graphical controls include the safe and useful subset whose syntax was confirmed live. Teleport is also available as a guarded player action because the current official command-class reference includes both [`TeleportCommand`](https://projectzomboid.com/modding/zombie/commands/serverCommands/TeleportCommand.html) and [`TeleportToCommand`](https://projectzomboid.com/modding/zombie/commands/serverCommands/TeleportToCommand.html), even though the live server's earlier help snapshot omitted them. When a destination has a position from the last 15 seconds of telemetry, survivor-to-survivor teleport uses the reliable coordinate form; otherwise it uses the native two-player form. The app requires the source player to be online, validates coordinate input, confirms the destination, audits the command, and reports an actionable error if the running server rejects it. Other older commands found in online guides—such as weather start/stop, statistics, and access-level assignment—remain raw-console only unless their syntax is verified against the running server.
+The command inventory was verified against the live Build 42 server's own `help` response and the installed Build 42.20 command classes. The raw console exposes the authoritative help text, while the graphical controls include the safe and useful subset whose syntax and result behavior were confirmed. Teleport uses a fresh telemetry position when available and otherwise falls back to the native two-player command. Player ability toggles use explicit `-true` or `-false` values, weather duration is expressed in in-game hours, and role assignment accepts the role names reported by the running server, including custom roles. Every structured action validates its input, audits the command, and reports known Project Zomboid rejection replies as failures.
 
 ## Important capability boundary
 
@@ -72,7 +75,7 @@ The dashboard therefore distinguishes:
 
 1. **Live RCON data** — authoritative online state and command results.
 2. **Observed history** — sessions and online duration measured after this dashboard starts polling.
-3. **Deep telemetry** — the separate [PZ RCON Admin Telemetry](https://github.com/DoomedGaming/pz-rcon-admin-telemetry) companion exports health, kills, survived hours, profession, position, traits, skill levels, carried weight, and the key ID of a vehicle the survivor is currently occupying. It is available either as a directly installed server utility or as a Build 42 Steam Workshop mod. The dashboard retrieves its snapshot through a configured FTP/FTPS endpoint. `/api/telemetry/player` remains available as an authenticated alternative for custom senders.
+3. **Deep telemetry** — the separate [PZ RCON Admin Telemetry](https://github.com/DoomedGaming/pz-rcon-admin-telemetry) companion exports health, kills, survived hours, profession, position, traits, skill levels, carried weight, occupied-vehicle key ID, authoritative ability flags, and the server's current role list. It is available either as a directly installed server utility or as a Build 42 Steam Workshop mod. The dashboard retrieves its snapshot through a configured FTP/FTPS endpoint. `/api/telemetry/player` remains available as an authenticated alternative for custom senders.
 
 Hosting-provider operations are separate from RCON. A stopped process cannot be started with RCON. Starting/restarting at the provider level, backups, file management, and account permissions remain in the provider panel. The optional provider link is only a URL; the app stores no hosting-account credentials.
 
@@ -80,7 +83,7 @@ Hosting-provider operations are separate from RCON. A stopped process cannot be 
 
 Deep telemetry connects two separately maintained components released with the same version number:
 
-1. [PZ RCON Admin Telemetry](https://github.com/DoomedGaming/pz-rcon-admin-telemetry) is a credential-free, server-only Project Zomboid Build 42.20+ companion. Choose its `direct-install` package or its `workshop` package—never both. Either version refreshes the JSON snapshot at `Lua/PZRconAdminTelemetry/players.txt` when the online survivor count changes and otherwise throttles writes to once per real minute while the server is active. Build 42 requires the `.txt` extension for Lua-written text files.
+1. [PZ RCON Admin Telemetry](https://github.com/DoomedGaming/pz-rcon-admin-telemetry) is a credential-free Project Zomboid Build 42.20+ companion. Choose its `direct-install` package or its `workshop` package—never both. Either version refreshes the JSON snapshot at `Lua/PZRconAdminTelemetry/players.txt`; the Workshop package also includes the connected-client SandboxVars synchronization handler. Build 42 requires the `.txt` extension for Lua-written text files.
 2. The dashboard's built-in FTP bridge retrieves that file from a host that exposes the server files over FTP or FTPS, validates its schema and limits, then updates the survivor registry in one batch.
 
 For the direct package, upload `direct-install/media/lua/server/PZRconAdminTelemetry_Server.lua` from the companion repository to `media/lua/server/PZRconAdminTelemetry_Server.lua` in the game server tree. Do **not** add the direct package to `Mods` or `WorkshopItems`. Provider game updates or **Verify game files** may remove this file, so re-check the path after either operation.
@@ -88,6 +91,8 @@ For the direct package, upload `direct-install/media/lua/server/PZRconAdminTelem
 For the Workshop package, publish or subscribe to its Steam item, add the numeric Workshop item ID to `WorkshopItems`, and add the Mod ID `PZRconAdminTelemetry` to `Mods`. Remove the direct-install file before enabling the mod. See the companion repository's [direct-install instructions](https://github.com/DoomedGaming/pz-rcon-admin-telemetry/tree/main/direct-install) and [Workshop instructions](https://github.com/DoomedGaming/pz-rcon-admin-telemetry/tree/main/workshop) for the complete procedures.
 
 Enter the FTP or FTPS values supplied by the hosting provider under **Optional server-file access** during first-run setup. The following equivalent environment overrides resemble G-Portal, but any compatible file host works:
+
+Telemetry and configuration retrieval need read access. The **Sandbox live** control additionally needs permission to create and update `control.txt` and `control-status.txt` beside the telemetry snapshot; Project Zomboid itself writes the saved SandboxVars file.
 
 ```dotenv
 PZ_TELEMETRY_FTP_HOST=your-provider-ftp-host
@@ -141,7 +146,15 @@ The Admin-only **Live settings** page uses the running server's `changeoption op
 
 Successful changes are retained in the dashboard data file so a dashboard process restart does not fall back to an older imported INI snapshot when `showoptions` is truncated. Visibility/nameplate options are applied by the server without a server restart, but players who are already connected must log out and back in before their client refreshes those values; the page marks those controls explicitly.
 
-The live panel includes access limits, chat controls, PvP safety, safehouse rules, visibility, factions, voice chat, anti-grief restrictions, pause-while-empty, and the automatic save interval. Voice distance accepts bounded decimal values and prevents the full-volume distance from exceeding the maximum audible distance. The anti-grief group covers destructive fire, sledgehammer damage, container item limits, vehicle, trailer, and burnt-wreck towing restrictions, and the global moderation sound. Zombie population, loot, time, weather cycles, vehicle spawning and population, map selection, and Workshop configuration remain read-only because they are not guaranteed runtime changes.
+The live panel includes access limits, chat controls, PvP safety, safehouse rules, visibility, factions, voice chat, anti-grief restrictions, pause-while-empty, and the automatic save interval. Voice distance accepts bounded decimal values and prevents the full-volume distance from exceeding the maximum audible distance. The anti-grief group covers destructive fire, sledgehammer damage, container item limits, vehicle, trailer, and burnt-wreck towing restrictions, and the global moderation sound.
+
+## Live SandboxVars
+
+The Admin-only **Sandbox live** page loads every scalar option currently present in the server's `SandboxVars.lua`, groups and searches them by Project Zomboid option name, and preserves each option's boolean, number, or text type. An Apply action uploads one authenticated control request beside the telemetry snapshot. The companion asks Project Zomboid to validate the value, applies it to the running server, calls `applySettings()` and `toLua()`, saves the server's SandboxVars file, and returns an acknowledgement before the dashboard records success. No game-server restart or `reloadoptions` command is involved.
+
+The Workshop companion synchronizes the accepted value to already connected clients. The direct-install variant applies and persists the server value but does not install the client-side handler, so a client-cached option may require survivors to reconnect. Settings that affect only world generation or initial character creation are not retroactive: changing one live cannot rebuild existing map cells or existing characters. Map and Workshop lists remain outside this workflow.
+
+The control and acknowledgement files are `Lua/PZRconAdminTelemetry/control.txt` and `Lua/PZRconAdminTelemetry/control-status.txt`. They contain option names, values, request IDs, and result messages only—never FTP credentials. Access is gated by the same backend-only FTP/FTPS account already used for telemetry; the browser cannot write these files directly.
 
 The unauthenticated landing page reports whether RCON is reachable, the current player count, and the configured map. Optional community identity, join details, and links remain generic or hidden unless the operator explicitly sets them:
 

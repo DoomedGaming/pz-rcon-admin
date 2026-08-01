@@ -31,7 +31,7 @@
   <main id="main">
     <header class="page-hero">
       <div class="shell">
-        <p class="eyebrow">Operator field manual · v0.7.4</p>
+        <p class="eyebrow">Operator field manual · v0.7.5</p>
         <h1>Install once.<br><span>Know every part.</span></h1>
         <p>Deploy the dashboard, complete encrypted first-run setup, connect RCON, and add only the optional integrations your server needs.</p>
       </div>
@@ -213,11 +213,11 @@ docker compose logs -f dashboard</code></pre>
         <section id="telemetry">
           <p class="eyebrow">05 / Optional signal</p>
           <h2>Deep telemetry</h2>
-          <p class="section-intro">Vanilla RCON does not expose character health, skills, traits, position, kills, profession, carried weight, or vehicle key IDs. Install one telemetry package to add that data.</p>
+          <p class="section-intro">Vanilla RCON does not expose character health, skills, traits, position, current powers, server role definitions, or vehicle key IDs. Install one telemetry package to add that data and enable acknowledged live SandboxVars control.</p>
 
           <div class="choice-grid">
-            <article class="choice"><small>Option A</small><h3>Steam Workshop</h3><p>Add Workshop item <a href="https://steamcommunity.com/sharedfiles/filedetails/?id=3767189432">3767189432</a> and Mod ID <code>PZRconAdminTelemetry</code> to the server, then restart.</p></article>
-            <article class="choice"><small>Option B</small><h3>Direct install</h3><p>Download the Lua asset from the <a href="https://github.com/DoomedGaming/pz-rcon-admin-telemetry/releases/latest">latest telemetry release</a> and upload it to <code>media/lua/server/PZRconAdminTelemetry_Server.lua</code>.</p></article>
+            <article class="choice"><small>Option A</small><h3>Steam Workshop</h3><p>Add Workshop item <a href="https://steamcommunity.com/sharedfiles/filedetails/?id=3767189432">3767189432</a> and Mod ID <code>PZRconAdminTelemetry</code> to the server, then restart. This variant synchronizes SandboxVars changes to connected clients.</p></article>
+            <article class="choice"><small>Option B</small><h3>Direct install</h3><p>Download the Lua asset from the <a href="https://github.com/DoomedGaming/pz-rcon-admin-telemetry/releases/latest">latest telemetry release</a> and upload it to <code>media/lua/server/PZRconAdminTelemetry_Server.lua</code>. It applies server changes, but client-cached settings may require reconnecting.</p></article>
           </div>
 
           <div class="callout danger"><strong>Install only one variant.</strong><p>Do not enable the Workshop mod while the direct-install Lua file is present. Game updates or “Verify game files” may remove the direct-install file, so check it after either operation.</p></div>
@@ -227,7 +227,7 @@ docker compose logs -f dashboard</code></pre>
           <table class="field-table">
             <thead><tr><th>Field</th><th>Default / meaning</th></tr></thead>
             <tbody>
-              <tr><td>FTP/FTPS host, port, username, password</td><td>The file-service credentials from the hosting provider. These are unrelated to RCON.</td></tr>
+              <tr><td>FTP/FTPS host, port, username, password</td><td>The file-service credentials from the hosting provider. Sandbox live needs permission to create and update files beside the telemetry snapshot.</td></tr>
               <tr><td>Transport</td><td>Plain FTP, explicit FTPS, or implicit FTPS according to the provider.</td></tr>
               <tr><td>Telemetry file path</td><td><code>Lua/PZRconAdminTelemetry/players.txt</code> (JSON content)</td></tr>
               <tr><td>Server INI FTP path</td><td><code>Server/servertest.ini</code></td></tr>
@@ -237,6 +237,10 @@ docker compose logs -f dashboard</code></pre>
             </tbody>
           </table>
           <p>The Lua exporter writes at most every 5 seconds during steady activity, with extra event-driven writes at startup and when the online-player count changes. The dashboard retrieves the latest snapshot on the same interval.</p>
+
+          <h3>Change SandboxVars without restarting</h3>
+          <p>Open <strong>Admin → Sandbox live</strong>, search the options loaded from the server's SandboxVars file, change one typed value, and apply it. The backend writes a request beside the telemetry snapshot; Project Zomboid validates, applies, and saves the option before the companion acknowledges success. The Workshop variant also synchronizes connected clients.</p>
+          <div class="callout warning"><strong>Live does not mean retroactive.</strong><p>World-generation and initial-character options are saved for future use but cannot rebuild existing cells or existing characters. Map and Workshop lists are not editable through this page.</p></div>
           <a class="top-link" href="#main">Back to top ↑</a>
         </section>
 
@@ -279,7 +283,7 @@ docker compose logs -f dashboard</code></pre>
               <tr><td>SandboxVars.lua path</td><td><code>/config/servertest_SandboxVars.lua</code></td></tr>
             </tbody>
           </table>
-          <p>Both FTP and local sources are read-only. These files are not required for RCON controls, telemetry, or player sign-in, and the dashboard never writes changes back to them.</p>
+          <p>The imported INI and SandboxVars source files remain read-only dashboard context. When FTP telemetry control is configured, <strong>Sandbox live</strong> asks Project Zomboid itself to apply and save one validated option through separate <code>Lua/PZRconAdminTelemetry/control.txt</code> and <code>control-status.txt</code> files. Read-only local mounts cannot enable that control path.</p>
           <a class="top-link" href="#main">Back to top ↑</a>
         </section>
 
@@ -310,7 +314,7 @@ docker compose logs -f dashboard</code></pre>
 docker compose up -d --no-build dashboard
 docker compose logs --tail=100 dashboard</code></pre>
           </div>
-          <p>For predictable rollouts, replace <code>latest</code> in Compose with a release such as <code class="inline-code">0.7.4</code>. The tags <code>X.Y.Z</code> and <code>X.Y</code> are published for each release.</p>
+          <p>For predictable rollouts, replace <code>latest</code> in Compose with a release such as <code class="inline-code">0.7.5</code>. The tags <code>X.Y.Z</code> and <code>X.Y</code> are published for each release.</p>
 
           <h3>Back up persistent data</h3>
           <p>Back up the named volume before major changes. It contains both the encrypted configuration and the encryption key, plus player history, roles, support requests, preferences, and audit records. A backup of only one secure-config file is not sufficient.</p>
@@ -406,7 +410,7 @@ curl -i http://127.0.0.1:8788/api/health</code></pre>
 
   <footer class="site-footer">
     <div class="shell footer-grid">
-      <span>Documentation for PZ RCON Admin v0.7.4 · Updated with the project.</span>
+      <span>Documentation for PZ RCON Admin v0.7.5 · Updated with the project.</span>
       <div class="footer-links">
         <a href="../">Home</a>
         <a href="https://github.com/DoomedGaming/pz-rcon-admin/issues">Report an issue</a>

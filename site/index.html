@@ -87,7 +87,7 @@
         <div class="signal"><small>Control channel</small><strong>Live RCON</strong></div>
         <div class="signal"><small>Credentials</small><strong>AES-256-GCM</strong></div>
         <div class="signal"><small>Deployment</small><strong>Docker / Node</strong></div>
-        <div class="signal"><small>Current release</small><strong>v0.7.4</strong></div>
+        <div class="signal"><small>Current release</small><strong>v0.7.5</strong></div>
       </div>
     </section>
 
@@ -99,9 +99,9 @@
           <p>Keep routine administration understandable, auditable, and close to the community it serves.</p>
         </div>
         <div class="feature-grid">
-          <article class="feature-card"><span class="feature-number">01 / CONTROL</span><h3>Live administration</h3><p>Poll server status, manage survivors, broadcast announcements, run guarded commands, save, reload options, and shut down safely.</p></article>
+          <article class="feature-card"><span class="feature-number">01 / CONTROL</span><h3>Live administration</h3><p>Poll server status, manage survivor powers and roles, edit SandboxVars without restarting, run guarded commands, save, and shut down safely.</p></article>
           <article class="feature-card"><span class="feature-number">02 / PEOPLE</span><h3>Survivor records</h3><p>Track observed sessions and playtime, review online state, and help players through a private request center with staff assignment and replies.</p></article>
-          <article class="feature-card"><span class="feature-number">03 / SIGNAL</span><h3>Deep telemetry</h3><p>Add health, kills, skills, traits, position, profession, carried weight, and current vehicle key data through the separate server companion.</p></article>
+          <article class="feature-card"><span class="feature-number">03 / SIGNAL</span><h3>Deep telemetry</h3><p>Add health, skills, position, current powers, server roles, and vehicle key data through the separate credential-free companion.</p></article>
           <article class="feature-card"><span class="feature-number">04 / MAP</span><h3>Interactive world map</h3><p>See reported survivor positions on a pinned Build 42.19 map. Player views follow their latest movement while staff can review the wider field.</p></article>
           <article class="feature-card"><span class="feature-number">05 / ACCESS</span><h3>Player portal</h3><p>Optionally let survivors sign in with their Project Zomboid account, see their private record, choose a theme, and contact server staff.</p></article>
           <article class="feature-card"><span class="feature-number">06 / TRACE</span><h3>Audited actions</h3><p>Record administrative actions while redacting secret-bearing commands. User, Moderator, and Admin roles keep access intentionally scoped.</p></article>
@@ -121,7 +121,7 @@
           <span class="arch-arrow" aria-hidden="true">→</span>
           <article class="arch-node accent"><small>Your infrastructure</small><strong>PZ RCON Admin</strong><p>Stores encrypted configuration, observed history, support requests, roles, preferences, and audit records.</p></article>
           <span class="arch-arrow" aria-hidden="true">↔</span>
-          <article class="arch-node"><small>Your game host</small><strong>RCON + files</strong><p>RCON provides live control. Optional FTP or FTPS retrieves telemetry, account data, and read-only configuration files.</p></article>
+          <article class="arch-node"><small>Your game host</small><strong>RCON + files</strong><p>RCON provides live control. Optional FTP or FTPS retrieves server data and carries acknowledged SandboxVars requests.</p></article>
         </div>
       </div>
     </section>
@@ -151,7 +151,7 @@
         <div class="security-list">
           <div class="security-item"><b>✓</b><div><strong>Encrypted first-run configuration</strong><p>Passwords, session keys, FTP credentials, and tokens are encrypted with AES-256-GCM and never returned to the browser after saving.</p></div></div>
           <div class="security-item"><b>✓</b><div><strong>Unprivileged container</strong><p>The published image runs as a non-root user with a read-only filesystem, dropped capabilities, and a persistent data volume.</p></div></div>
-          <div class="security-item"><b>✓</b><div><strong>No telemetry credentials in the mod</strong><p>The Lua companion only writes a local JSON snapshot. It contains no passwords, dashboard URL, or outbound networking code.</p></div></div>
+          <div class="security-item"><b>✓</b><div><strong>No telemetry credentials in the mod</strong><p>The Lua companion uses only local snapshot and control files. It contains no passwords, dashboard URL, or outbound networking code.</p></div></div>
           <div class="security-item"><b>✓</b><div><strong>Your network policy still matters</strong><p>Use HTTPS for public access, restrict RCON and FTP at the firewall, and prefer FTPS or a private network when your host supports it.</p></div></div>
         </div>
       </div>

@@ -14,6 +14,7 @@ export interface TelemetrySnapshot {
   schemaVersion: 1
   generatedAt: number
   serverName?: string
+  roles: string[]
   players: TelemetrySnapshotPlayer[]
 }
 
@@ -66,6 +67,11 @@ function optionalText(value: unknown, name: string, maximumLength: number): stri
   return trimmed
 }
 
+function requiredBoolean(value: unknown, name: string): boolean {
+  if (typeof value !== 'boolean') throw new Error(`${name} must be a boolean`)
+  return value
+}
+
 export function normalizePlayerTelemetry(value: unknown): Omit<PlayerTelemetry, 'updatedAt'> {
   const input = record(value)
   const output: Omit<PlayerTelemetry, 'updatedAt'> = {}
@@ -86,6 +92,16 @@ export function normalizePlayerTelemetry(value: unknown): Omit<PlayerTelemetry, 
     const z = optionalNumber(position.z, 'position.z', -100, 100)
     if (x === undefined || y === undefined || z === undefined) throw new Error('position requires x, y, and z')
     output.position = { x, y, z }
+  }
+
+  if (input.abilities !== undefined && input.abilities !== null) {
+    const abilities = record(input.abilities)
+    output.abilities = {
+      godMode: requiredBoolean(abilities.godMode, 'abilities.godMode'),
+      invisible: requiredBoolean(abilities.invisible, 'abilities.invisible'),
+      noClip: requiredBoolean(abilities.noClip, 'abilities.noClip'),
+      ...(abilities.ghostMode === undefined ? {} : { ghostMode: requiredBoolean(abilities.ghostMode, 'abilities.ghostMode') }),
+    }
   }
 
   if (input.vehicle !== undefined && input.vehicle !== null) {
@@ -150,10 +166,25 @@ export function parseTelemetrySnapshot(text: string): TelemetrySnapshot {
     return { username, telemetry: normalizePlayerTelemetry(player.telemetry) }
   })
 
+  const roles = input.roles === undefined
+    ? []
+    : (() => {
+        if (!Array.isArray(input.roles) || input.roles.length > 64) throw new Error('roles must be an array with at most 64 entries')
+        const unique = new Set<string>()
+        return input.roles.map((role, index) => {
+          const normalized = optionalText(role, `roles[${index}]`, 64)
+          if (!normalized || !/^\w+$/.test(normalized)) throw new Error(`roles[${index}] must be a valid role name`)
+          if (unique.has(normalized.toLowerCase())) throw new Error(`Duplicate telemetry role: ${normalized}`)
+          unique.add(normalized.toLowerCase())
+          return normalized
+        })
+      })()
+
   return {
     schemaVersion: 1,
     generatedAt: input.generatedAt,
     serverName: optionalText(input.serverName, 'serverName', 128),
+    roles,
     players,
   }
 }

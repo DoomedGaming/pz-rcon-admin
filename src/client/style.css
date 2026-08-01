@@ -410,6 +410,31 @@ input:focus, textarea:focus, select:focus { border-color: var(--acid); box-shado
 .field-combo + .field-combo { margin-top: 7px; }
 .count-field { max-width: 70px; }
 .ability-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 8px; }
+.ability-section .player-detail-heading { align-items: flex-start; }
+.ability-section .player-detail-heading p, .role-management-section .player-detail-heading p { max-width: 390px; margin: 4px 0 0; color: var(--muted-2); font-size: 8px; line-height: 1.45; }
+.ability-section .player-detail-heading > small { color: var(--muted-2); font: 7px monospace; }
+.ability-state-list { display: flex; flex-wrap: wrap; gap: 5px; margin: 10px 0 4px; }
+.ability-state-list > span { display: flex; align-items: center; gap: 7px; padding: 5px 7px; border: 1px solid var(--line-soft); background: var(--surface-deep); color: var(--muted-2); font-size: 8px; }
+.ability-state-list > span b { color: var(--muted); font: 7px monospace; }
+.ability-state-list > span.active { border-color: rgba(var(--acid-rgb),.38); background: rgba(var(--acid-rgb),.07); color: var(--acid-bright); }
+.ability-state-list > span.active b { color: var(--acid); }
+.ability-state-unavailable { margin: 10px 0 4px; padding: 8px 9px; border: 1px solid rgba(211,155,88,.3); background: rgba(211,155,88,.05); color: #d7bb93 !important; font-size: 8px !important; }
+.role-management-section .field-combo { margin-top: 10px; }
+.secondary-admin-actions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.weather-control-panel { margin-top: 12px; }
+.weather-controls { display: grid; grid-template-columns: minmax(150px,1fr) auto minmax(170px,1fr) auto auto; align-items: end; gap: 8px; margin-top: 14px; }
+.weather-controls label { color: var(--muted); font-size: 8px; }
+.weather-controls input { margin-top: 5px; }
+.sandbox-search-panel { display: flex; align-items: end; justify-content: space-between; gap: 20px; margin-bottom: 12px; }
+.sandbox-search-panel label { width: min(600px,100%); color: var(--muted); font-size: 9px; }
+.sandbox-search-panel input { margin-top: 6px; }
+.sandbox-search-panel small { color: var(--muted-2); font: 8px monospace; }
+.sandbox-settings-groups { grid-template-columns: 1fr; }
+.sandbox-setting-row { grid-template-columns: minmax(240px,1fr) minmax(280px,.8fr); }
+.sandbox-setting-row .live-setting-copy small { display: block; margin-top: 5px; color: var(--muted-2); font-size: 8px; }
+.sandbox-value-control { display: flex; align-items: center; justify-content: flex-end; gap: 7px; }
+.sandbox-value-control > input { max-width: 250px; }
+.sandbox-value-control .setting-toggle { min-width: 120px; }
 .teleport-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 14px; }
 .teleport-heading h3 { margin-bottom: 4px; }
 .teleport-heading p { margin: 0 0 12px; color: var(--muted); font-size: 9px; line-height: 1.5; }
@@ -758,6 +783,7 @@ input:focus, textarea:focus, select:focus { border-color: var(--acid); box-shado
   :root { --sidebar: 205px; }
   .metric-grid { grid-template-columns: 1fr 1fr; }
   .world-layout { grid-template-columns: 1fr; }
+  .weather-controls { grid-template-columns: 1fr auto; }
   .coordinate-panel { position: static; }
   .command-grid { grid-template-columns: 1fr; }
   .settings-grid { grid-template-columns: 1fr 1fr; }

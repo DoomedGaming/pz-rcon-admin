@@ -306,6 +306,7 @@ onMounted(() => void load())
 
       <fieldset>
         <legend>Telemetry and server-file access</legend>
+        <p class="setup-field-note wide">Read access provides telemetry and configuration. Sandbox live also requires permission to create and update files beside the telemetry snapshot.</p>
         <label>FTP/FTPS host<input v-model="form.telemetryHost" autocomplete="off" /></label>
         <label>Port<input v-model="form.telemetryPort" type="number" min="1" max="65535" /></label>
         <label>Username<input v-model="form.telemetryUser" autocomplete="username" /></label>
@@ -315,7 +316,7 @@ onMounted(() => void load())
         <label>Telemetry file path<input v-model="form.telemetryPath" autocomplete="off" /></label>
         <label>Telemetry poll interval (seconds)<input v-model="form.telemetryPollSeconds" type="number" min="5" /></label>
         <label>Server INI FTP path <small>Refreshed automatically.</small><input v-model="form.configFtpPath" autocomplete="off" /></label>
-        <label>SandboxVars FTP path <small>Refreshed automatically.</small><input v-model="form.sandboxFtpPath" autocomplete="off" /></label>
+        <label>SandboxVars FTP path <small>Refreshed automatically; Project Zomboid persists accepted live changes.</small><input v-model="form.sandboxFtpPath" autocomplete="off" /></label>
         <label class="wide">New telemetry HTTP token <small>{{ configuredHint('PZ_TELEMETRY_TOKEN') }}</small><input v-model="form.telemetryToken" type="password" autocomplete="new-password" :disabled="clearSecrets.includes('PZ_TELEMETRY_TOKEN')" /></label>
         <label class="check wide"><input v-model="clearSecrets" type="checkbox" value="PZ_TELEMETRY_TOKEN" /> Remove stored HTTP token</label>
         <label class="check wide"><input v-model="form.playerAuthEnabled" type="checkbox" /> Enable player account sign-in</label>
@@ -366,6 +367,7 @@ legend { padding: 0 8px; color: var(--acid-bright); font: 700 14px 'Barlow Conde
 label { display: grid; gap: 7px; color: var(--text); font-size: 13px; font-weight: 700; }
 label small { color: var(--muted); font-weight: 400; line-height: 1.4; }
 label.wide { grid-column: 1 / -1; }
+.setup-field-note { grid-column: 1 / -1; margin: 0; color: var(--muted); font-size: 12px; line-height: 1.5; }
 input, select, textarea { width: 100%; padding: 12px 13px; border: 1px solid var(--line); background: var(--surface-deep); color: var(--text); }
 input:disabled { opacity: .55; }
 textarea { resize: vertical; }
@@ -377,5 +379,5 @@ textarea { resize: vertical; }
 .configuration-message.restart { border: 1px solid var(--acid); background: rgba(167, 180, 106, .08); text-align: left; }
 .configuration-message strong { color: var(--acid-bright); font-size: 18px; }
 .configuration-message p { margin-bottom: 0; }
-@media (max-width: 760px) { fieldset { grid-template-columns: 1fr; } label.wide { grid-column: auto; } }
+@media (max-width: 760px) { fieldset { grid-template-columns: 1fr; } label.wide, .setup-field-note { grid-column: auto; } }
 </style>

@@ -8,6 +8,18 @@ This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.7.5] - 2026-08-01
+
+### Added
+
+- Added authoritative God Mode, Invisible, No Clip, and Ghost Mode telemetry with true enable/disable controls instead of browser-local guesses.
+- Added server-reported built-in and custom in-game role assignment, voice blocking/restoration, map-symbol clearing, and live rain/storm controls.
+- Added searchable, typed, acknowledged live SandboxVars editing that validates through Project Zomboid, persists the server file, and avoids a server restart.
+
+### Changed
+
+- Expanded the telemetry companion contract to include player abilities and the current server role list.
+
 ## [0.7.4] - 2026-07-29
 
 ### Fixed
@@ -132,7 +144,8 @@ This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 - Corrected the GitHub Container Registry workflow's image build platform.
 
-[Unreleased]: https://github.com/DoomedGaming/pz-rcon-admin/compare/v0.7.4...HEAD
+[Unreleased]: https://github.com/DoomedGaming/pz-rcon-admin/compare/v0.7.5...HEAD
+[0.7.5]: https://github.com/DoomedGaming/pz-rcon-admin/compare/v0.7.4...v0.7.5
 [0.7.4]: https://github.com/DoomedGaming/pz-rcon-admin/compare/v0.7.3...v0.7.4
 [0.7.3]: https://github.com/DoomedGaming/pz-rcon-admin/compare/v0.7.2...v0.7.3
 [0.7.2]: https://github.com/DoomedGaming/pz-rcon-admin/compare/v0.7.1...v0.7.2

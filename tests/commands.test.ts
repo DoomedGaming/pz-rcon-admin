@@ -36,7 +36,26 @@ describe('command builders', () => {
   it('uses the current Build 42 player ability commands', () => {
     expect(buildPlayerCommand('Alice', 'godmode')).toBe('godmodeplayer "Alice" -true')
     expect(buildPlayerCommand('Alice', 'godmode', { enabled: false })).toBe('godmodeplayer "Alice" -false')
+    expect(buildPlayerCommand('Alice', 'invisible', { enabled: false })).toBe('invisibleplayer "Alice" -false')
+    expect(buildPlayerCommand('Alice', 'noclip', { enabled: false })).toBe('noclip "Alice" -false')
     expect(buildPlayerCommand('Alice', 'addxp', { perk: 'Woodwork', amount: 100 })).toBe('addxp "Alice" Woodwork=100 -true')
+  })
+
+  it('builds guarded in-game role and secondary administration commands', () => {
+    expect(buildPlayerCommand('Alice', 'access-level', { level: 'observer' })).toBe('setaccesslevel "Alice" observer')
+    expect(buildPlayerCommand('Alice', 'access-level', { level: 'eventhost' })).toBe('setaccesslevel "Alice" eventhost')
+    expect(buildPlayerCommand('Alice', 'access-level', { level: 'none' })).toBe('setaccesslevel "Alice" none')
+    expect(buildPlayerCommand('Alice', 'voiceban', { enabled: true })).toBe('voiceban "Alice" -true')
+    expect(buildPlayerCommand('Alice', 'clear-map-symbols')).toBe('removemapsymbolsforuser "Alice"')
+    expect(() => buildPlayerCommand('Alice', 'access-level', { level: 'event host' })).toThrow('valid in-game role')
+  })
+
+  it('validates structured live weather commands', () => {
+    expect(buildDefinedCommand('start-rain', { intensity: 50 }).command).toBe('startrain 50')
+    expect(buildDefinedCommand('start-storm', { duration: 60 }).command).toBe('startstorm 60')
+    expect(buildDefinedCommand('stop-weather').command).toBe('stopweather')
+    expect(() => buildDefinedCommand('start-rain', { intensity: 101 })).toThrow('Rain intensity')
+    expect(() => buildDefinedCommand('start-storm', { duration: 169 })).toThrow('Storm duration')
   })
 
   it('requires a reason for every moderator player action', () => {

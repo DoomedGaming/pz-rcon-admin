@@ -6,6 +6,7 @@ const snapshot = JSON.stringify({
   schemaVersion: 1,
   generatedAt: 1_784_135_200,
   serverName: 'Doomed Gaming',
+  roles: ['user', 'priority', 'observer', 'gm', 'moderator', 'admin', 'eventhost'],
   players: [{
     username: 'apop',
     telemetry: {
@@ -14,6 +15,7 @@ const snapshot = JSON.stringify({
       hoursSurvived: 14.25,
       profession: 'Mechanic',
       position: { x: 10_825.5, y: 9_854.25, z: 0 },
+      abilities: { godMode: true, invisible: false, noClip: true, ghostMode: false },
       vehicle: { keyId: 42_918, script: 'Base.PickUpVanLights' },
       traits: ['Brave', 'Fast Learner'],
       perks: { Fitness: 5, Mechanics: 4 },
@@ -26,6 +28,7 @@ describe('Project Zomboid deep telemetry', () => {
   it('parses and normalizes a Build 42 server snapshot', () => {
     const parsed = parseTelemetrySnapshot(snapshot)
     expect(parsed.serverName).toBe('Doomed Gaming')
+    expect(parsed.roles).toContain('eventhost')
     expect(parsed.players).toHaveLength(1)
     expect(parsed.players[0]).toMatchObject({
       username: 'apop',
@@ -33,6 +36,7 @@ describe('Project Zomboid deep telemetry', () => {
         health: 92.5,
         zombieKills: 48,
         profession: 'Mechanic',
+        abilities: { godMode: true, invisible: false, noClip: true, ghostMode: false },
         vehicle: { keyId: 42_918, script: 'Base.PickUpVanLights' },
         perks: { Fitness: 5, Mechanics: 4 },
       },
@@ -61,6 +65,18 @@ describe('Project Zomboid deep telemetry', () => {
   it('rejects invalid current-vehicle key IDs', () => {
     expect(() => normalizePlayerTelemetry({ vehicle: { keyId: -1 } })).toThrow('vehicle.keyId')
     expect(() => normalizePlayerTelemetry({ vehicle: { keyId: 12.5 } })).toThrow('whole number')
+  })
+
+  it('requires authoritative ability flags to be booleans', () => {
+    expect(() => normalizePlayerTelemetry({ abilities: { godMode: 'yes', invisible: false, noClip: false } }))
+      .toThrow('abilities.godMode must be a boolean')
+  })
+
+  it('rejects invalid or duplicate server role names', () => {
+    expect(() => parseTelemetrySnapshot(JSON.stringify({ schemaVersion: 1, generatedAt: 1, roles: ['event host'], players: [] })))
+      .toThrow('valid role name')
+    expect(() => parseTelemetrySnapshot(JSON.stringify({ schemaVersion: 1, generatedAt: 1, roles: ['GM', 'gm'], players: [] })))
+      .toThrow('Duplicate telemetry role')
   })
 
   it('downloads, validates, and imports a snapshot through the FTP bridge', async () => {
