@@ -63,7 +63,7 @@ const subtitle = computed(() => props.audience === 'admin'
   ? 'All survivors with a reported position. Offline markers show their last known location.'
   : 'Your latest location plus currently online survivors with a reported position.')
 const followedUsername = computed(() => props.audience === 'player'
-  ? props.followUsername.trim().toLocaleLowerCase('en-US')
+  ? props.followUsername.trim()
   : '')
 
 function relativeTime(value?: string): string {
@@ -274,8 +274,8 @@ watch(markers, async (nextMarkers, previousMarkers) => {
   // Follow the signed-in survivor on their player page without interrupting an
   // administrator who is reviewing or panning across several locations.
   if (followedUsername.value) {
-    const nextFollowed = nextMarkers.find((marker) => marker.username.toLocaleLowerCase('en-US') === followedUsername.value)
-    const previousFollowed = previousMarkers.find((marker) => marker.username.toLocaleLowerCase('en-US') === followedUsername.value)
+    const nextFollowed = nextMarkers.find((marker) => marker.username === followedUsername.value)
+    const previousFollowed = previousMarkers.find((marker) => marker.username === followedUsername.value)
     if (nextFollowed && markerMoved(nextFollowed, previousFollowed)) focusMarker(nextFollowed.username)
   }
 }, { deep: true, immediate: true })

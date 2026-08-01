@@ -8,6 +8,20 @@ This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.8.1] - 2026-08-01
+
+### Added
+
+- Added an Admin-only, exact-confirmation control for removing offline survivors from local dashboard history without changing their Project Zomboid account, whitelist entry, save data, support requests, or audit history.
+
+### Fixed
+
+- Preserved distinct case-sensitive Project Zomboid identities across login, survivor history, telemetry, dashboard roles, themes, maps, support requests, and player-targeted commands.
+
+### Changed
+
+- Added a login-page reminder that username casing matters.
+
 ## [0.8.0] - 2026-08-01
 
 ### Added
@@ -151,7 +165,9 @@ This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 - Corrected the GitHub Container Registry workflow's image build platform.
 
-[Unreleased]: https://github.com/DoomedGaming/pz-rcon-admin/compare/v0.7.5...HEAD
+[Unreleased]: https://github.com/DoomedGaming/pz-rcon-admin/compare/v0.8.1...HEAD
+[0.8.1]: https://github.com/DoomedGaming/pz-rcon-admin/compare/v0.8.0...v0.8.1
+[0.8.0]: https://github.com/DoomedGaming/pz-rcon-admin/compare/v0.7.5...v0.8.0
 [0.7.5]: https://github.com/DoomedGaming/pz-rcon-admin/compare/v0.7.4...v0.7.5
 [0.7.4]: https://github.com/DoomedGaming/pz-rcon-admin/compare/v0.7.3...v0.7.4
 [0.7.3]: https://github.com/DoomedGaming/pz-rcon-admin/compare/v0.7.2...v0.7.3

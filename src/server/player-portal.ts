@@ -41,9 +41,7 @@ export function buildPlayerPortalCommunity(environment: NodeJS.ProcessEnv, serve
 }
 
 export function buildPlayerMapRoster(players: PlayerRecord[], authenticatedUsername: string): PlayerMapRecord[] {
-  const subject = authenticatedUsername.trim().toLocaleLowerCase('en-US')
-  const subjectMatches = players.filter((player) => player.username.toLocaleLowerCase('en-US') === subject)
-  const canonicalSelf = subjectMatches.length === 1 ? subjectMatches[0].username : undefined
+  const canonicalSelf = authenticatedUsername.trim()
   return players.flatMap((player) => {
     const telemetry = player.telemetry
     const isSelf = player.username === canonicalSelf

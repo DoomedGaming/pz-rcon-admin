@@ -348,7 +348,7 @@ async function loadDashboardUsers() {
 
 async function changeDashboardRole(user: DashboardUser, role: DashboardRole) {
   if (user.role === role) return
-  const warning = user.username.toLocaleLowerCase('en-US') === sessionUsername.value.toLocaleLowerCase('en-US')
+  const warning = user.username === sessionUsername.value
     ? `Change your own role from ${user.role} to ${role}? You may immediately lose access to this console.`
     : `Change ${user.username} from ${user.role} to ${role}?`
   if (!window.confirm(warning)) return
@@ -360,9 +360,41 @@ async function changeDashboardRole(user: DashboardUser, role: DashboardRole) {
     })
     dashboardUsers.value = dashboardUsers.value.map((item) => item.username === updated.username ? updated : item)
     notify(`${updated.username} is now ${updated.role}`)
-    if (updated.username.toLocaleLowerCase('en-US') === sessionUsername.value.toLocaleLowerCase('en-US')) await loadSession()
+    if (updated.username === sessionUsername.value) await loadSession()
   } catch (error) {
     notify(error instanceof Error ? error.message : 'Role change failed', true)
+  } finally {
+    busy.value = ''
+  }
+}
+
+async function removeDashboardPlayer(player: PlayerRecord) {
+  if (player.online) {
+    notify('Online survivors cannot be removed from the dashboard', true)
+    return
+  }
+  const confirmation = window.prompt(
+    `Remove ${player.username} from the dashboard?\n\nThis deletes local survivor history, telemetry, dashboard role, and theme only. It does not ban the player, remove their whitelist entry, or delete game data. The account will reappear if it signs in or is observed again.\n\nType the exact username to continue:`,
+  )
+  if (confirmation !== player.username) {
+    if (confirmation !== null) notify(`Confirmation must equal ${player.username}`, true)
+    return
+  }
+  busy.value = `remove-dashboard-${player.username}`
+  try {
+    await api(`/api/admin/players/${encodeURIComponent(player.username)}`, {
+      method: 'DELETE',
+      body: JSON.stringify({ confirm: player.username }),
+    })
+    if (overview.value) overview.value.players = overview.value.players.filter((item) => item.username !== player.username)
+    dashboardUsers.value = dashboardUsers.value.filter((user) => user.username !== player.username)
+    delete abilityOverrides.value[player.username]
+    delete playerRoleDrafts.value[player.username]
+    delete playerReasons.value[player.username]
+    if (expandedPlayerUsername.value === player.username) expandedPlayerUsername.value = null
+    notify(`${player.username} was removed from the dashboard`)
+  } catch (error) {
+    notify(error instanceof Error ? error.message : 'Dashboard removal failed', true)
   } finally {
     busy.value = ''
   }
@@ -480,7 +512,7 @@ async function runCommand(id: string, args: Record<string, string> = {}) {
 }
 
 function useWorldTargetPosition() {
-  const target = onlinePlayers.value.find((player) => player.username.toLocaleLowerCase('en-US') === worldTarget.value.trim().toLocaleLowerCase('en-US'))
+  const target = onlinePlayers.value.find((player) => player.username === worldTarget.value.trim())
   const position = target?.telemetry?.position
   if (!position) {
     notify('No telemetry position is available for that online survivor', true)
@@ -572,11 +604,11 @@ function developedPerks(player: PlayerRecord): Array<[string, number]> {
 }
 
 function canTeleportToPlayer(username: string): boolean {
-  const source = username.toLocaleLowerCase('en-US')
-  const destination = teleportDestination.value.toLocaleLowerCase('en-US')
+  const source = username
+  const destination = teleportDestination.value
   return Boolean(destination) && onlinePlayers.value.some((player) => (
-    player.username.toLocaleLowerCase('en-US') === destination
-    && player.username.toLocaleLowerCase('en-US') !== source
+    player.username === destination
+    && player.username !== source
   ))
 }
 
@@ -1030,7 +1062,17 @@ onBeforeUnmount(() => {
                         <small class="vehicle-key-help">The key ID belongs to one specific vehicle; it is not an item ID such as Base.CarKey. Have an online survivor sit in the target vehicle and its key ID will appear here after the next telemetry snapshot.</small>
                       </section>
                       </template>
-                      <section class="player-detail-section danger-zone"><h3>Moderation</h3><input v-model="playerReasons[playerItem.username]" :aria-label="`Moderation reason for ${playerItem.username}`" aria-required="true" maxlength="300" placeholder="Reason required and recorded in the audit log" required /><div><button class="button outline" :disabled="busy.startsWith('player-') || !playerReasons[playerItem.username]?.trim()" @click="playerAction(playerItem.username, 'kick', { reason: playerReasons[playerItem.username] })">Kick</button><button class="button danger-button" :disabled="busy.startsWith('player-') || !playerReasons[playerItem.username]?.trim()" @click="playerAction(playerItem.username, 'ban', { reason: playerReasons[playerItem.username] })">Ban survivor</button><button class="button outline" :disabled="busy.startsWith('player-') || !playerReasons[playerItem.username]?.trim()" @click="playerAction(playerItem.username, 'remove-whitelist', { reason: playerReasons[playerItem.username] })">Remove whitelist</button></div></section>
+                      <section class="player-detail-section danger-zone">
+                        <h3>Moderation</h3>
+                        <input v-model="playerReasons[playerItem.username]" :aria-label="`Moderation reason for ${playerItem.username}`" aria-required="true" maxlength="300" placeholder="Reason required and recorded in the audit log" required />
+                        <div><button class="button outline" :disabled="busy.startsWith('player-') || !playerReasons[playerItem.username]?.trim()" @click="playerAction(playerItem.username, 'kick', { reason: playerReasons[playerItem.username] })">Kick</button><button class="button danger-button" :disabled="busy.startsWith('player-') || !playerReasons[playerItem.username]?.trim()" @click="playerAction(playerItem.username, 'ban', { reason: playerReasons[playerItem.username] })">Ban survivor</button><button class="button outline" :disabled="busy.startsWith('player-') || !playerReasons[playerItem.username]?.trim()" @click="playerAction(playerItem.username, 'remove-whitelist', { reason: playerReasons[playerItem.username] })">Remove whitelist</button></div>
+                      </section>
+                      <section v-if="isAdmin" class="player-detail-section dashboard-removal-zone">
+                        <h3>Dashboard record</h3>
+                        <p>Forget this survivor's local history, telemetry, dashboard role, and theme. This does not change the Project Zomboid account, whitelist, save, or support-request history.</p>
+                        <button class="button danger-button" :disabled="playerItem.online || busy === `remove-dashboard-${playerItem.username}`" @click="removeDashboardPlayer(playerItem)">{{ playerItem.online ? 'Offline required' : busy === `remove-dashboard-${playerItem.username}` ? 'Removing…' : 'Remove from dashboard' }}</button>
+                        <small>The survivor will reappear automatically after signing in or joining the server again.</small>
+                      </section>
                     </div>
                   </div>
                 </section>

@@ -155,7 +155,7 @@ export function buildPlayerCommand(username: string, action: PlayerAction, paylo
     case 'teleport-player': {
       const destination = clean(payload.destination)
       if (!destination) throw new Error('Choose a destination survivor')
-      if (destination.toLocaleLowerCase('en-US') === clean(username).toLocaleLowerCase('en-US')) {
+      if (destination === clean(username)) {
         throw new Error('Choose a different destination survivor')
       }
       return `teleportplayer ${user} ${quote(destination)}`

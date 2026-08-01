@@ -44,4 +44,16 @@ describe('staff console browser boundaries', () => {
     expect(app).toContain("integration.telemetryConnected ? 'Not reported by companion' : 'Waiting for telemetry'")
     expect(app).toContain(':server-version="overview.server.serverVersion"')
   })
+
+  it('offers exact-confirmation removal only for offline dashboard records', () => {
+    const app = read('src/client/App.vue')
+    const server = read('src/server/index.ts')
+
+    expect(app).toContain('Remove from dashboard')
+    expect(app).toContain('playerItem.online || busy === `remove-dashboard-${playerItem.username}`')
+    expect(app).toContain("method: 'DELETE'")
+    expect(app).toContain('confirmation !== player.username')
+    expect(server).toContain("app.delete('/api/admin/players/:username', requireDashboardRole('admin')")
+    expect(server).toContain('request.body?.confirm !== username')
+  })
 })

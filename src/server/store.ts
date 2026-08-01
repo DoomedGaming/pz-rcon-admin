@@ -38,13 +38,28 @@ export class DashboardStore {
     if (!existsSync(this.path)) return emptyState()
     try {
       const parsed = JSON.parse(readFileSync(this.path, 'utf8')) as StoreState
+      const players = Object.fromEntries(Object.values(parsed.players ?? {})
+        .filter((player) => player?.username)
+        .map((player) => [player.username, player]))
+      const dashboardUsers = Object.fromEntries(Object.values(parsed.dashboardUsers ?? {})
+        .filter((user) => user?.username)
+        .map((user) => [user.username, user]))
+      const knownUsernames = new Set([
+        ...Object.keys(players),
+        ...Object.keys(dashboardUsers),
+      ])
+      const playerSettings = Object.fromEntries(Object.entries(parsed.playerSettings ?? {}).flatMap(([storedKey, settings]) => {
+        if (knownUsernames.has(storedKey)) return [[storedKey, settings]]
+        const matches = [...knownUsernames].filter((username) => username.toLocaleLowerCase('en-US') === storedKey.toLocaleLowerCase('en-US'))
+        return matches.length === 1 ? [[matches[0], settings]] : []
+      }))
       return {
         ...emptyState(),
         ...parsed,
-        players: parsed.players ?? {},
-        dashboardUsers: parsed.dashboardUsers ?? {},
+        players,
+        dashboardUsers,
         liveSettingOverrides: parsed.liveSettingOverrides ?? {},
-        playerSettings: parsed.playerSettings ?? {},
+        playerSettings,
         supportRequests: parsed.supportRequests ?? {},
       }
     } catch {
@@ -111,33 +126,30 @@ export class DashboardStore {
   }
 
   getPlayer(username: string, now = new Date()): PlayerRecord | undefined {
-    const normalized = username.trim().toLocaleLowerCase('en-US')
-    if (!normalized) return undefined
-    const matches = this.getPlayers(now).filter((player) => player.username.toLocaleLowerCase('en-US') === normalized)
-    return matches.length === 1 ? matches[0] : undefined
+    const key = username.trim()
+    return key ? this.getPlayers(now).find((player) => player.username === key) : undefined
   }
 
   recordDashboardLogin(username: string, at = new Date()): DashboardUser {
     const canonical = username.trim()
-    const key = canonical.toLocaleLowerCase('en-US')
     const now = at.toISOString()
-    const existing = this.state.dashboardUsers[key]
+    const existing = this.state.dashboardUsers[canonical]
     const user: DashboardUser = existing
       ? { ...existing, username: canonical, lastSeenAt: now, lastLoginAt: now }
       : { username: canonical, role: 'user', firstSeenAt: now, lastSeenAt: now, lastLoginAt: now }
-    this.state.dashboardUsers[key] = user
+    this.state.dashboardUsers[canonical] = user
     this.save()
     return { ...user }
   }
 
   getDashboardRole(username: string): DashboardRole {
-    return this.state.dashboardUsers[username.trim().toLocaleLowerCase('en-US')]?.role ?? 'user'
+    return this.state.dashboardUsers[username.trim()]?.role ?? 'user'
   }
 
   getDashboardUsers(now = new Date()): DashboardUser[] {
     const users = new Map<string, DashboardUser>()
     for (const player of this.getPlayers(now)) {
-      const key = player.username.toLocaleLowerCase('en-US')
+      const key = player.username
       const existing = this.state.dashboardUsers[key]
       users.set(key, existing ? { ...existing, username: player.username, lastSeenAt: player.lastSeenAt } : {
         username: player.username,
@@ -157,9 +169,8 @@ export class DashboardStore {
 
   setDashboardRole(username: string, role: DashboardRole, updatedBy: string, at = new Date()): DashboardUser {
     const canonical = username.trim()
-    const key = canonical.toLocaleLowerCase('en-US')
-    const known = this.state.dashboardUsers[key]
-      ?? this.getPlayers(at).find((player) => player.username.toLocaleLowerCase('en-US') === key)
+    const known = this.state.dashboardUsers[canonical]
+      ?? this.getPlayers(at).find((player) => player.username === canonical)
     if (!known) throw new Error('Dashboard user was not found')
     const now = at.toISOString()
     const user: DashboardUser = {
@@ -171,9 +182,21 @@ export class DashboardStore {
       roleUpdatedAt: now,
       roleUpdatedBy: updatedBy,
     }
-    this.state.dashboardUsers[key] = user
+    this.state.dashboardUsers[canonical] = user
     this.save()
     return { ...user }
+  }
+
+  removeDashboardPlayer(username: string): PlayerRecord {
+    const key = username.trim()
+    const player = this.state.players[key]
+    if (!player) throw new Error('Dashboard survivor was not found')
+    if (player.online) throw new Error('Online survivors cannot be removed from the dashboard')
+    delete this.state.players[key]
+    delete this.state.dashboardUsers[key]
+    delete this.state.playerSettings[key]
+    this.save()
+    return { ...player, ...(player.telemetry ? { telemetry: { ...player.telemetry } } : {}) }
   }
 
   getLiveSettingOverrides(): Record<string, LiveSettingOverride> {
@@ -188,7 +211,7 @@ export class DashboardStore {
   }
 
   getPlayerSettings(username: string): PlayerSettings {
-    const key = username.trim().toLocaleLowerCase('en-US')
+    const key = username.trim()
     const saved = this.state.playerSettings[key]
     return {
       theme: isPlayerTheme(saved?.theme) ? saved.theme : DEFAULT_PLAYER_SETTINGS.theme,
@@ -197,7 +220,7 @@ export class DashboardStore {
   }
 
   setPlayerTheme(username: string, theme: PlayerTheme, at = new Date()): PlayerSettings {
-    const key = username.trim().toLocaleLowerCase('en-US')
+    const key = username.trim()
     if (!key) throw new Error('Player username is required')
     const settings = { ...this.getPlayerSettings(username), theme, updatedAt: at.toISOString() }
     this.state.playerSettings[key] = settings
@@ -220,8 +243,8 @@ export class DashboardStore {
   }
 
   getSupportRequestsForUser(username: string): SupportRequest[] {
-    const key = username.trim().toLocaleLowerCase('en-US')
-    return this.getSupportRequests().filter((request) => request.createdBy.toLocaleLowerCase('en-US') === key)
+    const key = username.trim()
+    return this.getSupportRequests().filter((request) => request.createdBy === key)
   }
 
   getSupportRequest(id: string): SupportRequest | undefined {

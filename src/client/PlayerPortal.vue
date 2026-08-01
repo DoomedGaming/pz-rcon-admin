@@ -380,10 +380,11 @@ onBeforeUnmount(() => {
             maxlength="64"
             placeholder="Your username"
             :aria-invalid="errorMessage ? 'true' : undefined"
-            :aria-describedby="errorMessage ? 'player-login-error' : undefined"
+            :aria-describedby="errorMessage ? 'player-username-help player-login-error' : 'player-username-help'"
             autofocus
             @input="clearLoginError"
           />
+          <span id="player-username-help" class="field-help">Username casing matters: <code>howop</code> and <code>Howop</code> are different accounts.</span>
         </div>
         <div>
           <label for="player-password">Project Zomboid account password</label>

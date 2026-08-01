@@ -50,6 +50,7 @@ describe('Project Zomboid player authentication', () => {
       `)
       const storedHash = build42PasswordHash()
       insert.run('servertest', 'Doom', storedHash, 1)
+      insert.run('servertest', 'doom', storedHash, 1)
       insert.run('servertest', 'SteamOnly', storedHash, 2)
       database.close()
 
@@ -85,11 +86,13 @@ describe('Project Zomboid player authentication', () => {
         return client
       })
 
-      await expect(verifier.verify('  dOoM  ', 'password')).resolves.toBe('Doom')
+      await expect(verifier.verify('  dOoM  ', 'password')).resolves.toBeUndefined()
+      await expect(verifier.verify('Doom', 'password')).resolves.toBe('Doom')
+      await expect(verifier.verify('doom', 'password')).resolves.toBe('doom')
       await expect(verifier.verify('Doom', 'wrong password')).resolves.toBeUndefined()
       await expect(verifier.verify('SteamOnly', 'password')).resolves.toBeUndefined()
 
-      expect(clients).toHaveLength(3)
+      expect(clients).toHaveLength(5)
       for (const client of clients) {
         expect(client.access).toHaveBeenCalledWith(expect.objectContaining({
           host: 'ftp.example.test',
@@ -135,7 +138,7 @@ describe('Project Zomboid player authentication', () => {
     expect(playerAuth.username(request(signatureTampered))).toBeUndefined()
   })
 
-  it('looks up only one matching survivor and fails closed on ambiguous casing', async () => {
+  it('looks up survivors by their exact case-sensitive username', async () => {
     const directory = await mkdtemp(join(tmpdir(), 'pz-player-store-test-'))
     const store = new DashboardStore(join(directory, 'dashboard.json'))
 
@@ -153,7 +156,7 @@ describe('Project Zomboid player authentication', () => {
         position: { x: 4_000, y: 10_000, z: 2 },
       })
 
-      expect(store.getPlayer('  doom  ', observedAt)).toMatchObject({
+      expect(store.getPlayer('  Doom  ', observedAt)).toMatchObject({
         username: 'Doom',
         telemetry: {
           zombieKills: 42,
@@ -161,13 +164,15 @@ describe('Project Zomboid player authentication', () => {
           position: { x: 11_955.68, y: 6_806, z: 0 },
         },
       })
-      expect(store.getPlayer('doom', observedAt)?.telemetry?.position).not.toEqual(
+      expect(store.getPlayer('Doom', observedAt)?.telemetry?.position).not.toEqual(
         store.getPlayer('Alice', observedAt)?.telemetry?.position,
       )
+      expect(store.getPlayer('doom', observedAt)).toBeUndefined()
       expect(store.getPlayer('Unknown', observedAt)).toBeUndefined()
 
       store.markPlayersOnline(['Doom', 'DOOM', 'Alice'], observedAt)
-      expect(store.getPlayer('doom', observedAt)).toBeUndefined()
+      expect(store.getPlayer('Doom', observedAt)?.username).toBe('Doom')
+      expect(store.getPlayer('DOOM', observedAt)?.username).toBe('DOOM')
     } finally {
       await rm(directory, { recursive: true, force: true })
     }

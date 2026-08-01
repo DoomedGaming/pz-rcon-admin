@@ -16,6 +16,12 @@ describe('player portal request form', () => {
   it('passes the reported server build to the survivor map', () => {
     expect(playerPortalSource).toContain(':server-version="portal.server.serverVersion"')
   })
+
+  it('warns on the login form that Project Zomboid usernames are case-sensitive', () => {
+    expect(playerPortalSource).toContain('Username casing matters:')
+    expect(playerPortalSource).toContain('<code>howop</code> and <code>Howop</code> are different accounts.')
+    expect(playerPortalSource).toContain("'player-username-help player-login-error'")
+  })
 })
 
 describe('player portal community configuration', () => {
@@ -109,7 +115,7 @@ describe('player portal map roster', () => {
       },
     ]
 
-    const roster = buildPlayerMapRoster(players, ' doom ')
+    const roster = buildPlayerMapRoster(players, ' Doom ')
 
     expect(roster).toEqual([
       {
@@ -128,7 +134,7 @@ describe('player portal map roster', () => {
     expect(JSON.stringify(roster)).not.toContain('OfflineOther')
   })
 
-  it('fails closed on ambiguous casing for the signed-in survivor', () => {
+  it('shows only the exact signed-in casing as the offline self record', () => {
     const at = '2026-07-16T12:00:00.000Z'
     const player = (username: string) => ({
       username,
@@ -140,6 +146,10 @@ describe('player portal map roster', () => {
       telemetry: { updatedAt: at, position: { x: 10_000, y: 10_000, z: 0 }, health: 100 },
     })
 
-    expect(buildPlayerMapRoster([player('Doom'), player('DOOM')], 'doom')).toEqual([])
+    expect(buildPlayerMapRoster([player('Doom'), player('DOOM')], 'Doom')).toEqual([{
+      username: 'Doom',
+      online: false,
+      telemetry: { updatedAt: at, position: { x: 10_000, y: 10_000, z: 0 }, health: 100 },
+    }])
   })
 })

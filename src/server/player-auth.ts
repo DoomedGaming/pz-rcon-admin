@@ -99,8 +99,8 @@ export class PzPlayerCredentialVerifier {
       const rows = database.prepare(`
         SELECT username, password, authType
         FROM whitelist
-        WHERE LOWER(username) = LOWER(?) AND world = ?
-        LIMIT 2
+        WHERE username = ? COLLATE BINARY AND world = ?
+        LIMIT 1
       `).all(username, this.config.world) as Array<Record<string, unknown>>
 
       if (rows.length !== 1) return undefined

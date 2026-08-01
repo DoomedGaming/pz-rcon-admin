@@ -10,6 +10,10 @@ describe('parsePlayersResponse', () => {
     expect(parsePlayersResponse('Players:\n1. Alice\nusername=Bob\nAlice')).toEqual(['Alice', 'Bob'])
   })
 
+  it('keeps connected usernames that differ only by casing separate', () => {
+    expect(parsePlayersResponse('Players connected (2):\n-howop\n-Howop')).toEqual(['howop', 'Howop'])
+  })
+
   it('returns an empty list when nobody is connected', () => {
     expect(parsePlayersResponse('Players connected (0):\nNo players connected')).toEqual([])
   })

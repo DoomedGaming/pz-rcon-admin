@@ -314,7 +314,7 @@ app.post('/api/player/login', async (request, response) => {
 
   const username = String(request.body?.username ?? '').trim().slice(0, 64)
   const password = String(request.body?.password ?? '')
-  const key = `${request.ip || 'unknown'}:${username.toLocaleLowerCase('en-US')}`
+  const key = `${request.ip || 'unknown'}:${username}`
   const now = Date.now()
   const attempt = playerLoginAttempts.get(key)
   if (attempt && attempt.resetAt > now && attempt.count >= 8) {
@@ -428,7 +428,7 @@ app.post('/api/player/requests/:id/messages', (request, response) => {
   const id = String(request.params.id)
   try {
     const supportRequest = store.getSupportRequest(id)
-    if (!supportRequest || supportRequest.createdBy.toLocaleLowerCase('en-US') !== username.toLocaleLowerCase('en-US')) {
+    if (!supportRequest || supportRequest.createdBy !== username) {
       return response.status(404).json({ error: 'Support request was not found' })
     }
     const updated = store.addSupportRequestMessage(id, username, 'user', normalizeSupportRequestMessage(request.body?.message))
@@ -662,6 +662,28 @@ app.post('/api/poll', async (_request, response) => {
 
 app.get('/api/admin/users', requireDashboardRole('admin'), (_request, response) => {
   response.json(store.getDashboardUsers())
+})
+
+app.delete('/api/admin/players/:username', requireDashboardRole('admin'), (request, response) => {
+  const username = String(request.params.username ?? '').trim().slice(0, 64)
+  try {
+    if (!username) throw new Error('Player username is required')
+    if (request.body?.confirm !== username) return response.status(400).json({ error: `Confirmation must equal ${username}` })
+    const identity = requestDashboardIdentity(request)
+    if (identity.username === username) throw new Error('You cannot remove your own dashboard identity')
+    const removed = store.removeDashboardPlayer(username)
+    store.addAudit({
+      category: 'player',
+      action: 'dashboard-remove',
+      target: removed.username,
+      success: true,
+      detail: `${dashboardActor(request)} removed local survivor history, dashboard role, and settings`,
+    })
+    response.json({ ok: true, username: removed.username })
+  } catch (error) {
+    store.addAudit({ category: 'player', action: 'dashboard-remove', target: username || undefined, success: false, detail: errorMessage(error) })
+    response.status(400).json({ error: errorMessage(error) })
+  }
 })
 
 app.get('/api/admin/live-settings', requireDashboardRole('admin'), async (_request, response) => {

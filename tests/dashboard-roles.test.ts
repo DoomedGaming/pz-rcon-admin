@@ -12,15 +12,16 @@ describe('dashboard roles', () => {
       const store = new DashboardStore(path)
       store.markPlayersOnline(['Doom', 'Alice'], new Date('2026-07-17T12:00:00.000Z'))
 
-      expect(store.getDashboardRole('doom')).toBe('user')
+      expect(store.getDashboardRole('Doom')).toBe('user')
       expect(store.getDashboardUsers()).toEqual(expect.arrayContaining([
         expect.objectContaining({ username: 'Doom', role: 'user' }),
         expect.objectContaining({ username: 'Alice', role: 'user' }),
       ]))
 
-      const updated = store.setDashboardRole('doom', 'admin', 'Bootstrap administrator', new Date('2026-07-17T12:01:00.000Z'))
+      const updated = store.setDashboardRole('Doom', 'admin', 'Bootstrap administrator', new Date('2026-07-17T12:01:00.000Z'))
       expect(updated).toMatchObject({ username: 'Doom', role: 'admin', roleUpdatedBy: 'Bootstrap administrator' })
-      expect(new DashboardStore(path).getDashboardRole('DOOM')).toBe('admin')
+      expect(new DashboardStore(path).getDashboardRole('Doom')).toBe('admin')
+      expect(new DashboardStore(path).getDashboardRole('DOOM')).toBe('user')
     } finally {
       await rm(directory, { recursive: true, force: true })
     }
@@ -61,7 +62,7 @@ describe('dashboard roles', () => {
     }
   })
 
-  it('defaults player themes to green and persists them case-insensitively', async () => {
+  it('keeps player themes separate for usernames that differ only by casing', async () => {
     const directory = await mkdtemp(join(tmpdir(), 'pz-player-settings-test-'))
     const path = join(directory, 'dashboard.json')
     try {
@@ -72,8 +73,35 @@ describe('dashboard roles', () => {
         theme: 'violet',
         updatedAt: '2026-07-17T20:00:00.000Z',
       })
-      expect(store.getPlayerSettings('doom').theme).toBe('violet')
-      expect(new DashboardStore(path).getPlayerSettings('DOOM').theme).toBe('violet')
+      expect(store.setPlayerTheme('doom', 'amber').theme).toBe('amber')
+      expect(store.getPlayerSettings('Doom').theme).toBe('violet')
+      expect(store.getPlayerSettings('doom').theme).toBe('amber')
+      expect(new DashboardStore(path).getPlayerSettings('DOOM').theme).toBe('green')
+    } finally {
+      await rm(directory, { recursive: true, force: true })
+    }
+  })
+
+  it('removes an offline survivor and their dashboard identity without touching a casing variant', async () => {
+    const directory = await mkdtemp(join(tmpdir(), 'pz-dashboard-remove-test-'))
+    const path = join(directory, 'dashboard.json')
+    try {
+      const store = new DashboardStore(path)
+      store.markPlayersOnline(['howop', 'Howop'], new Date('2026-07-17T20:00:00.000Z'))
+      store.recordDashboardLogin('howop')
+      store.setDashboardRole('howop', 'moderator', 'Admin')
+      store.setPlayerTheme('howop', 'violet')
+
+      expect(() => store.removeDashboardPlayer('howop')).toThrow('Online survivors')
+      store.markPlayersOnline([], new Date('2026-07-17T20:05:00.000Z'))
+      expect(store.removeDashboardPlayer('howop').username).toBe('howop')
+
+      expect(store.getPlayer('howop')).toBeUndefined()
+      expect(store.getDashboardUsers().some((user) => user.username === 'howop')).toBe(false)
+      expect(store.getDashboardRole('howop')).toBe('user')
+      expect(store.getPlayerSettings('howop').theme).toBe('green')
+      expect(store.getPlayer('Howop')?.username).toBe('Howop')
+      expect(new DashboardStore(path).getPlayer('Howop')?.username).toBe('Howop')
     } finally {
       await rm(directory, { recursive: true, force: true })
     }

@@ -58,6 +58,19 @@ describe('Project Zomboid deep telemetry', () => {
     expect(() => normalizePlayerTelemetry({ health: 101 })).toThrow('health must be')
   })
 
+  it('keeps telemetry usernames that differ only by casing separate', () => {
+    const parsed = parseTelemetrySnapshot(JSON.stringify({
+      schemaVersion: 1,
+      generatedAt: 1_784_135_200,
+      players: [
+        { username: 'howop', telemetry: { zombieKills: 1 } },
+        { username: 'Howop', telemetry: { zombieKills: 2 } },
+      ],
+    }))
+
+    expect(parsed.players.map((player) => player.username)).toEqual(['howop', 'Howop'])
+  })
+
   it('converts Build 42 normalized health to a percentage', () => {
     expect(normalizePlayerTelemetry({ health: 1 }).health).toBe(100)
     expect(normalizePlayerTelemetry({ health: 0.425 }).health).toBeCloseTo(42.5)

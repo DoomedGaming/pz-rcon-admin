@@ -60,7 +60,7 @@ describe('persisted support request workflow', () => {
       expect(store.setSupportRequestStatus(created.id, 'approved', 'Moderator', new Date('2026-07-17T20:05:00.000Z')).status).toBe('approved')
       expect(store.setSupportRequestStatus(created.id, 'completed', 'Moderator', new Date('2026-07-17T20:06:00.000Z')).status).toBe('completed')
 
-      const reloaded = new DashboardStore(path).getSupportRequestsForUser('DOOM')[0]
+      const reloaded = new DashboardStore(path).getSupportRequestsForUser('Doom')[0]
       expect(reloaded).toMatchObject({ status: 'completed', claimedBy: 'Moderator' })
       expect(reloaded.messages).toHaveLength(2)
       reloaded.messages[0].body = 'mutated'
@@ -75,7 +75,8 @@ describe('persisted support request workflow', () => {
     try {
       const store = new DashboardStore(join(directory, 'dashboard.json'))
       const first = store.createSupportRequest({ category: 'help', createdBy: 'Alice', subject: 'Help one', detail: 'This is the first request.' })
-      expect(store.getSupportRequestsForUser('alice')).toHaveLength(1)
+      expect(store.getSupportRequestsForUser('Alice')).toHaveLength(1)
+      expect(store.getSupportRequestsForUser('alice')).toHaveLength(0)
       expect(store.claimSupportRequest(first.id, 'Mod One').claimedBy).toBe('Mod One')
       expect(() => store.claimSupportRequest(first.id, 'Mod Two')).toThrow('already claimed')
       expect(() => store.setSupportRequestStatus(first.id, 'completed', 'Mod One')).not.toThrow()

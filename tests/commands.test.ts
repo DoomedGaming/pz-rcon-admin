@@ -89,6 +89,8 @@ describe('command builders', () => {
     expect(() => buildPlayerCommand('Alice', 'teleport-coordinates', { x: 100, y: -1, z: 0 }))
       .toThrow('Y coordinate must be a whole number')
     expect(() => buildPlayerCommand('Alice', 'teleport-player', { destination: 'alice' }))
+      .not.toThrow()
+    expect(() => buildPlayerCommand('Alice', 'teleport-player', { destination: 'Alice' }))
       .toThrow('Choose a different destination survivor')
   })
 

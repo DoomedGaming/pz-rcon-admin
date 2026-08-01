@@ -450,6 +450,9 @@ input:focus, textarea:focus, select:focus { border-color: var(--acid); box-shado
 .vehicle-key-help { display: block; margin-top: 8px; color: var(--muted-2); font-size: 8px; line-height: 1.5; }
 .danger-zone { border: 1px solid rgba(214,86,78,.22); padding: 15px; margin-top: 18px; background: rgba(214,86,78,.035); }
 .danger-zone > div { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; margin-top: 8px; }
+.dashboard-removal-zone { display: grid; gap: 9px; }
+.dashboard-removal-zone p, .dashboard-removal-zone small { margin: 0; color: var(--muted); font-size: 9px; line-height: 1.55; }
+.dashboard-removal-zone .button { width: fit-content; }
 .telemetry-section p { color: var(--muted); font-size: 10px; line-height: 1.55; }
 .telemetry-section dl { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 .telemetry-section dl div { padding: 9px; background: var(--surface-deep); }
@@ -482,6 +485,7 @@ input:focus, textarea:focus, select:focus { border-color: var(--acid); box-shado
 .password-field button { min-width: 52px; position: absolute; top: 6px; right: 6px; bottom: 6px; border: 1px solid var(--line); background: var(--surface-control); color: var(--muted); cursor: pointer; font-size: 10px; font-weight: 700; }
 .password-field button:hover, .password-field button:focus-visible { border-color: var(--acid); color: var(--acid-bright); outline: none; }
 .field-help, .field-warning { color: var(--muted-2); font-size: 9px; line-height: 1.4; }
+.field-help code { color: var(--acid-bright); font-size: inherit; }
 .field-warning { color: #e0b36d; }
 .player-friend-hub { grid-column: 1 / -1; display: grid; grid-template-columns: 1.15fr .55fr .7fr minmax(210px, 1fr); gap: 1px; border: 1px solid var(--line-soft); background: var(--line-soft); position: relative; z-index: 1; }
 .player-friend-hub > div, .player-copy-address { min-width: 0; min-height: 72px; padding: 13px 15px; border: 0; background: var(--surface-card); color: inherit; text-align: left; }
