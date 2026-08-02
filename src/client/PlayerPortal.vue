@@ -10,6 +10,7 @@ import {
   supportRequestCategories,
 } from '@shared/support-requests'
 import { STAFF_CONSOLE_PATH } from '@shared/routes'
+import { api, ApiError, formatDuration, relativeTime } from './helpers'
 import ZomboidMap from './ZomboidMap.vue'
 
 const loading = ref(true)
@@ -37,7 +38,7 @@ const requestForm = ref<{ category: SupportRequestCategory; subject: string; det
 })
 const requestBusy = ref('')
 const expandedRequestId = ref<string | null>(null)
-const requestReply = ref('')
+const requestReplies = ref<Record<string, string>>({})
 const requestNotice = ref<{ text: string; error?: boolean } | null>(null)
 const settingsBusy = ref(false)
 const settingsMessage = ref<{ text: string; error?: boolean } | null>(null)
@@ -55,24 +56,17 @@ const themeChoices: Array<{ id: PlayerTheme; label: string; description: string;
   { id: 'rose', label: 'Rose', description: 'Dusty red accents without losing readability.', accent: '#bd737d', bright: '#df98a2', background: '#211619' },
 ]
 
-async function api<T>(path: string, options?: RequestInit): Promise<T> {
-  const response = await fetch(path, {
-    credentials: 'same-origin',
-    headers: { 'Content-Type': 'application/json', ...(options?.headers ?? {}) },
-    ...options,
-  })
-  const body = await response.json().catch(() => ({}))
-  if (!response.ok) throw new Error(body.error || `Request failed (${response.status})`)
-  return body as T
-}
+let loadPortalSequence = 0
 
 async function loadPortal(silent = false) {
+  const sequence = ++loadPortalSequence
   try {
     const previousStatuses = new Map(supportRequests.value.map((request) => [request.id, request.status]))
     const [nextPortal, nextRequests] = await Promise.all([
       api<PlayerPortalOverview>('/api/player/me'),
       api<SupportRequest[]>('/api/player/requests'),
     ])
+    if (sequence !== loadPortalSequence) return
     portal.value = nextPortal
     supportRequests.value = nextRequests
     playerSettings.value = portal.value.settings
@@ -82,6 +76,14 @@ async function loadPortal(silent = false) {
       if (changed) showRequestNotice(`${changed.subject} is now ${requestStatusLabel(changed.status)}`)
     }
   } catch (error) {
+    // An expired session cookie should return the visitor to the sign-in
+    // card instead of refreshing 401s behind stale data forever.
+    if (error instanceof ApiError && error.status === 401 && authenticated.value) {
+      authenticated.value = false
+      portal.value = null
+      errorMessage.value = 'Your session expired. Sign in again to continue.'
+      return
+    }
     if (!silent) errorMessage.value = error instanceof Error ? error.message : 'Unable to load survivor data'
   }
 }
@@ -127,7 +129,12 @@ async function login() {
 }
 
 async function logout() {
-  await api('/api/player/logout', { method: 'POST', body: '{}' })
+  try {
+    await api('/api/player/logout', { method: 'POST', body: '{}' })
+    errorMessage.value = ''
+  } catch (error) {
+    errorMessage.value = error instanceof Error ? error.message : 'Sign out could not reach the server'
+  }
   authenticated.value = false
   portal.value = null
   supportRequests.value = []
@@ -138,7 +145,7 @@ async function logout() {
   password.value = ''
   showPassword.value = false
   expandedRequestId.value = null
-  requestReply.value = ''
+  requestReplies.value = {}
   await nextTick()
   usernameInput.value?.focus()
 }
@@ -185,15 +192,15 @@ async function createSupportRequest() {
 }
 
 async function addPlayerRequestMessage(request: SupportRequest) {
-  if (!requestReply.value.trim()) return
+  if (!requestReplies.value[request.id]?.trim()) return
   requestBusy.value = `message-${request.id}`
   try {
     const updated = await api<SupportRequest>(`/api/player/requests/${encodeURIComponent(request.id)}/messages`, {
       method: 'POST',
-      body: JSON.stringify({ message: requestReply.value }),
+      body: JSON.stringify({ message: requestReplies.value[request.id] }),
     })
     supportRequests.value = supportRequests.value.map((item) => item.id === updated.id ? updated : item)
-    requestReply.value = ''
+    delete requestReplies.value[request.id]
     showRequestNotice('Reply added')
   } catch (error) {
     showRequestNotice(error instanceof Error ? error.message : 'Reply could not be added', true)
@@ -247,24 +254,6 @@ async function copyJoinAddress() {
     copyMessage.value = 'Copy unavailable — select the address manually'
   }
   copyTimer = window.setTimeout(() => { copyMessage.value = '' }, 4_000)
-}
-
-function formatDuration(seconds: number): string {
-  if (seconds < 60) return `${seconds}s`
-  const hours = Math.floor(seconds / 3600)
-  const minutes = Math.floor((seconds % 3600) / 60)
-  if (!hours) return `${minutes}m`
-  return `${hours}h ${minutes}m`
-}
-
-function relativeTime(value?: string): string {
-  if (!value) return 'Never'
-  const seconds = Math.max(0, Math.round((Date.now() - Date.parse(value)) / 1000))
-  if (seconds < 10) return 'Just now'
-  if (seconds < 60) return `${seconds}s ago`
-  if (seconds < 3600) return `${Math.floor(seconds / 60)}m ago`
-  if (seconds < 86400) return `${Math.floor(seconds / 3600)}h ago`
-  return `${Math.floor(seconds / 86400)}d ago`
 }
 
 function requestLengthProgress(current: number, minimum: number, maximum: number): string {
@@ -656,8 +645,8 @@ onBeforeUnmount(() => {
                 </article>
               </div>
               <form class="request-reply-form" @submit.prevent="addPlayerRequestMessage(request)">
-                <label :for="`request-reply-${request.id}`">Add a reply<textarea :id="`request-reply-${request.id}`" v-model="requestReply" rows="3" maxlength="1000" placeholder="Add information for staff"></textarea></label>
-                <button class="button outline" :disabled="requestBusy === `message-${request.id}` || !requestReply.trim()">{{ requestBusy === `message-${request.id}` ? 'Sending…' : 'Reply' }}</button>
+                <label :for="`request-reply-${request.id}`">Add a reply<textarea :id="`request-reply-${request.id}`" v-model="requestReplies[request.id]" rows="3" maxlength="1000" placeholder="Add information for staff"></textarea></label>
+                <button class="button outline" :disabled="requestBusy === `message-${request.id}` || !requestReplies[request.id]?.trim()">{{ requestBusy === `message-${request.id}` ? 'Sending…' : 'Reply' }}</button>
               </form>
             </div>
           </article>

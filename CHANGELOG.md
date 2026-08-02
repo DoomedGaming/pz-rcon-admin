@@ -8,6 +8,25 @@ This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.8.2] - 2026-08-01
+
+### Added
+
+- Added live HTTP route coverage and a required test/typecheck gate before container publication.
+- Added optional reverse-proxy trust configuration so login rate limits can use the real client address.
+
+### Fixed
+
+- Prevented repeated dashboard-state corruption from overwriting an earlier recovery copy.
+- Added bounded RCON connection attempts and socket-error handling so unreachable servers do not stall or crash the dashboard.
+- Retried server configuration imports after callback failures, rejected malformed secure-configuration JSON clearly, and hardened cookie parsing and command argument substitution.
+- Prevented stale background responses from replacing newer UI state, handled expired sessions and startup failures, and kept reply drafts separate between support requests.
+
+### Changed
+
+- Split the HTTP application from process startup for direct route testing and consolidated shared client and bounded-download helpers.
+- Reduced the production container to runtime dependencies and enabled stricter server TypeScript checks.
+
 ## [0.8.1] - 2026-08-01
 
 ### Added

@@ -11,6 +11,7 @@ import {
   type WorldMapDefinition,
   type WorldPosition,
 } from '@shared/world-map'
+import { relativeTime as sharedRelativeTime } from './helpers'
 
 const props = withDefaults(defineProps<{
   players: PlayerMapRecord[]
@@ -67,13 +68,7 @@ const followedUsername = computed(() => props.audience === 'player'
   : '')
 
 function relativeTime(value?: string): string {
-  if (!value) return 'Unknown time'
-  const seconds = Math.max(0, Math.round((Date.now() - Date.parse(value)) / 1000))
-  if (seconds < 10) return 'Just now'
-  if (seconds < 60) return `${seconds}s ago`
-  if (seconds < 3600) return `${Math.floor(seconds / 60)}m ago`
-  if (seconds < 86400) return `${Math.floor(seconds / 3600)}h ago`
-  return `${Math.floor(seconds / 86400)}d ago`
+  return sharedRelativeTime(value, 'Unknown time')
 }
 
 function coordinates(position: WorldPosition): string {
@@ -278,7 +273,9 @@ watch(markers, async (nextMarkers, previousMarkers) => {
     const previousFollowed = previousMarkers.find((marker) => marker.username === followedUsername.value)
     if (nextFollowed && markerMoved(nextFollowed, previousFollowed)) focusMarker(nextFollowed.username)
   }
-}, { deep: true, immediate: true })
+  // markers is a computed that always builds fresh arrays, so a reference
+  // watch is sufficient; deep traversal added cost without extra triggers.
+}, { immediate: true })
 
 onBeforeUnmount(destroyViewer)
 </script>
@@ -324,7 +321,7 @@ onBeforeUnmount(destroyViewer)
       </div>
 
       <div class="world-map-frame">
-        <div ref="mapElement" class="world-map-viewer" :aria-label="`${heading}. Pan with a pointer and zoom with the wheel or map controls.`"></div>
+        <div ref="mapElement" class="world-map-viewer" role="application" :aria-label="`${heading}. Pan with a pointer and zoom with the wheel or map controls.`"></div>
         <div v-if="!mapReady && !mapError" class="world-map-loading" aria-live="polite"><span></span>Loading map imagery…</div>
         <div v-if="mapError" class="world-map-warning" role="status">{{ mapError }}</div>
         <span class="world-map-floor">TOP VIEW · Z shown per survivor</span>

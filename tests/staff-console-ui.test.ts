@@ -13,7 +13,9 @@ describe('staff console browser boundaries', () => {
     expect(portal).toContain(':href="STAFF_CONSOLE_PATH"')
     expect(portal).not.toContain('href="/admin"')
     expect(app).toContain('if (!session.authenticated && !bootstrapAdminMode)')
-    expect(app.match(/window\.location\.replace\(PLAYER_PORTAL_PATH\)/g)).toHaveLength(2)
+    // Sign-out, an unauthenticated session check, and an expired session
+    // during background refresh all return player-method staff to the portal.
+    expect(app.match(/window\.location\.replace\(PLAYER_PORTAL_PATH\)/g)).toHaveLength(3)
     expect(configuration).toContain('window.location.assign(STAFF_CONSOLE_PATH)')
   })
 
@@ -47,7 +49,7 @@ describe('staff console browser boundaries', () => {
 
   it('offers exact-confirmation removal only for offline dashboard records', () => {
     const app = read('src/client/App.vue')
-    const server = read('src/server/index.ts')
+    const server = read('src/server/app.ts')
 
     expect(app).toContain('Remove from dashboard')
     expect(app).toContain('playerItem.online || busy === `remove-dashboard-${playerItem.username}`')

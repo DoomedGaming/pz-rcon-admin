@@ -174,7 +174,12 @@ export function loadSecureConfig(directory = secureConfigDirectory()): SecureCon
   const location = paths(directory)
   if (!existsSync(location.key) || !existsSync(location.config)) return {}
   const key = readKey(location.key)
-  const payload = JSON.parse(readFileSync(location.config, 'utf8')) as EncryptedConfigFile
+  let payload: EncryptedConfigFile
+  try {
+    payload = JSON.parse(readFileSync(location.config, 'utf8')) as EncryptedConfigFile
+  } catch {
+    throw new Error(`Secure configuration at ${location.config} is not readable JSON`)
+  }
   if (payload.version !== 1 || payload.algorithm !== 'aes-256-gcm') throw new Error('Secure configuration format is unsupported')
   const decipher = createDecipheriv('aes-256-gcm', key, Buffer.from(payload.iv, 'base64url'))
   decipher.setAuthTag(Buffer.from(payload.tag, 'base64url'))

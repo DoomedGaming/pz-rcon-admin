@@ -5,6 +5,7 @@ import { activeSupportRequestStatuses, supportRequestCategories } from '@shared/
 import { PLAYER_XP_PERKS } from '@shared/perks'
 import { isBootstrapAdminPath, isStaffConsolePath, PLAYER_PORTAL_PATH } from '@shared/routes'
 import { activityChartScale } from './activity-chart'
+import { api, ApiError, formatDuration, relativeTime } from './helpers'
 import ConfigurationEditor from './ConfigurationEditor.vue'
 import PlayerPortal from './PlayerPortal.vue'
 import SetupView from './SetupView.vue'
@@ -43,6 +44,7 @@ const abilityOptions: Array<{ key: AbilityKey; label: string }> = [
 
 const page = ref<Page>('overview')
 const loading = ref(true)
+const sessionError = ref('')
 const authenticated = ref(false)
 const authRequired = ref(false)
 const identityAuthenticated = ref(false)
@@ -108,7 +110,8 @@ const modSearch = ref('')
 const settingsSearch = ref('')
 const consoleCommand = ref('')
 const consoleConfirm = ref('')
-const consoleLines = ref<Array<{ at: string; command: string; output: string; error?: boolean }>>([])
+const consoleLines = ref<Array<{ id: number; at: string; command: string; output: string; error?: boolean }>>([])
+let consoleLineId = 0
 const abilityOverrides = ref<Record<string, Partial<Record<AbilityKey, { enabled: boolean; observedAt?: string }>>>>({})
 const playerRoleDrafts = ref<Record<string, string>>({})
 let refreshTimer: number | undefined
@@ -132,17 +135,6 @@ const navItems = computed(() => allNavItems.filter((item) => !item.adminOnly || 
 const brandName = computed(() => community.value.name)
 const brandInitials = computed(() => community.value.initials)
 const brandTagline = computed(() => community.value.tagline)
-
-async function api<T>(path: string, options?: RequestInit): Promise<T> {
-  const response = await fetch(path, {
-    credentials: 'same-origin',
-    headers: { 'Content-Type': 'application/json', ...(options?.headers ?? {}) },
-    ...options,
-  })
-  const body = await response.json().catch(() => ({}))
-  if (!response.ok) throw new Error(body.error || `Request failed (${response.status})`)
-  return body as T
-}
 
 function notify(message: string, error = false) {
   toast.value = { message, error }
@@ -189,15 +181,22 @@ async function login() {
 }
 
 async function logout() {
-  await api('/api/logout', { method: 'POST', body: '{}' })
-  window.location.replace(PLAYER_PORTAL_PATH)
+  try {
+    await api('/api/logout', { method: 'POST', body: '{}' })
+    window.location.replace(PLAYER_PORTAL_PATH)
+  } catch (error) {
+    notify(error instanceof Error ? error.message : 'Sign out failed', true)
+  }
 }
 
 function goToPlayerPortal() {
   window.location.assign(PLAYER_PORTAL_PATH)
 }
 
+let loadAllSequence = 0
+
 async function loadAll(silent = false) {
+  const sequence = ++loadAllSequence
   try {
     const [nextOverview, nextCommands, nextAudit, config, nextRequests] = await Promise.all([
       api<Overview>('/api/overview'),
@@ -210,6 +209,8 @@ async function loadAll(silent = false) {
       !isAdmin.value || Object.keys(sandbox.value).length ? Promise.resolve({ sandbox: sandbox.value }) : api<{ sandbox: Record<string, string | number | boolean> }>('/api/config'),
       api<SupportRequest[]>('/api/requests'),
     ])
+    // A slower older refresh must not clobber the state a newer one wrote.
+    if (sequence !== loadAllSequence) return
     for (const player of nextOverview.players) {
       const overrides = abilityOverrides.value[player.username]
       if (!overrides) continue
@@ -241,6 +242,13 @@ async function loadAll(silent = false) {
       selectedRequestId.value = nextRequests.find((request) => activeSupportRequestStatuses.includes(request.status))?.id ?? nextRequests[0].id
     }
   } catch (error) {
+    // The 12-hour session cookie can expire while the console is open;
+    // fall back to the sign-in flow instead of polling 401s forever.
+    if (error instanceof ApiError && error.status === 401 && authenticated.value) {
+      authenticated.value = false
+      if (!bootstrapAdminMode) window.location.replace(PLAYER_PORTAL_PATH)
+      return
+    }
     if (!silent) notify(error instanceof Error ? error.message : 'Could not load dashboard', true)
   }
 }
@@ -333,7 +341,7 @@ function handleRequestDialogKeydown(event: KeyboardEvent) {
 
 function navCount(item: { id: Page }): number {
   if (item.id === 'players') return onlinePlayers.value.length
-  if (item.id === 'requests') return supportRequests.value.filter((request) => request.status === 'open').length
+  if (item.id === 'requests') return openSupportRequestCount.value
   return 0
 }
 
@@ -400,6 +408,14 @@ async function removeDashboardPlayer(player: PlayerRecord) {
   }
 }
 
+function liveSettingDraftValue(setting: LiveSettingState): string | boolean {
+  return setting.kind === 'boolean' ? Boolean(setting.value) : setting.value === undefined ? '' : String(setting.value)
+}
+
+function sandboxSettingDraftValue(setting: SandboxSettingState): string | boolean {
+  return setting.kind === 'boolean' ? Boolean(setting.value) : String(setting.value)
+}
+
 async function loadLiveSettings() {
   if (!isAdmin.value) return
   try {
@@ -407,10 +423,7 @@ async function loadLiveSettings() {
     liveSettings.value = snapshot.settings
     liveSettingsWarning.value = snapshot.warning ?? ''
     liveSettingsRefreshedAt.value = snapshot.refreshedAt
-    liveSettingDrafts.value = Object.fromEntries(snapshot.settings.map((setting) => [
-      setting.key,
-      setting.kind === 'boolean' ? Boolean(setting.value) : setting.value === undefined ? '' : String(setting.value),
-    ]))
+    liveSettingDrafts.value = Object.fromEntries(snapshot.settings.map((setting) => [setting.key, liveSettingDraftValue(setting)]))
   } catch (error) {
     notify(error instanceof Error ? error.message : 'Could not load live settings', true)
   }
@@ -418,7 +431,7 @@ async function loadLiveSettings() {
 
 async function changeLiveSetting(setting: LiveSettingState, value: string | boolean) {
   if (setting.impact === 'caution' && !window.confirm(`${setting.label}\n\n${setting.description}\n\nApply this immediately to the running server?`)) {
-    liveSettingDrafts.value[setting.key] = setting.kind === 'boolean' ? Boolean(setting.value) : setting.value === undefined ? '' : String(setting.value)
+    liveSettingDrafts.value[setting.key] = liveSettingDraftValue(setting)
     return
   }
   busy.value = `setting-${setting.key}`
@@ -428,11 +441,11 @@ async function changeLiveSetting(setting: LiveSettingState, value: string | bool
       body: JSON.stringify({ value, confirm: setting.impact === 'caution' ? setting.key : undefined }),
     })
     liveSettings.value = liveSettings.value.map((item) => item.key === setting.key ? result.setting : item)
-    liveSettingDrafts.value[setting.key] = result.setting.kind === 'boolean' ? Boolean(result.setting.value) : String(result.setting.value ?? '')
+    liveSettingDrafts.value[setting.key] = liveSettingDraftValue(result.setting)
     notify(`${result.setting.label} updated live${result.setting.requiresPlayerReconnect ? ' — players must reconnect to refresh it' : ''}`)
     await loadAll(true)
   } catch (error) {
-    liveSettingDrafts.value[setting.key] = setting.kind === 'boolean' ? Boolean(setting.value) : setting.value === undefined ? '' : String(setting.value)
+    liveSettingDrafts.value[setting.key] = liveSettingDraftValue(setting)
     notify(error instanceof Error ? error.message : 'Live setting change failed', true)
   } finally {
     busy.value = ''
@@ -447,10 +460,7 @@ async function loadSandboxSettings() {
     sandboxSettingsConfigured.value = snapshot.configured
     sandboxSettingsWarning.value = snapshot.warning ?? ''
     sandboxSettingsRefreshedAt.value = snapshot.refreshedAt
-    sandboxSettingDrafts.value = Object.fromEntries(snapshot.settings.map((setting) => [
-      setting.key,
-      setting.kind === 'boolean' ? Boolean(setting.value) : String(setting.value),
-    ]))
+    sandboxSettingDrafts.value = Object.fromEntries(snapshot.settings.map((setting) => [setting.key, sandboxSettingDraftValue(setting)]))
   } catch (error) {
     notify(error instanceof Error ? error.message : 'Could not load SandboxVars controls', true)
   }
@@ -465,12 +475,12 @@ async function changeSandboxSetting(setting: SandboxSettingState) {
       body: JSON.stringify({ value: sandboxSettingDrafts.value[setting.key], confirm: setting.key }),
     })
     sandboxSettings.value = sandboxSettings.value.map((entry) => entry.key === setting.key ? result.setting : entry)
-    sandboxSettingDrafts.value[setting.key] = result.setting.kind === 'boolean' ? Boolean(result.setting.value) : String(result.setting.value)
+    sandboxSettingDrafts.value[setting.key] = sandboxSettingDraftValue(result.setting)
     sandbox.value[result.setting.key] = result.setting.value
     notify(`${result.setting.option} updated live and saved`)
     await loadAll(true)
   } catch (error) {
-    sandboxSettingDrafts.value[setting.key] = setting.kind === 'boolean' ? Boolean(setting.value) : String(setting.value)
+    sandboxSettingDrafts.value[setting.key] = sandboxSettingDraftValue(setting)
     notify(error instanceof Error ? error.message : 'SandboxVars change failed', true)
   } finally {
     busy.value = ''
@@ -501,7 +511,7 @@ async function runCommand(id: string, args: Record<string, string> = {}) {
       body: JSON.stringify({ args, confirm: definition.impact === 'danger' ? id : undefined }),
     })
     notify(`${definition.label} completed`)
-    consoleLines.value.unshift({ at: new Date().toISOString(), command: result.command, output: result.output })
+    consoleLines.value.unshift({ id: ++consoleLineId, at: new Date().toISOString(), command: result.command, output: result.output })
     if (id === 'announce') announcement.value = ''
     await loadAll(true)
   } catch (error) {
@@ -555,7 +565,7 @@ async function playerAction(username: string, action: string, payload: Record<st
       notify(`${action} command completed for ${username}`)
     }
     if (['kick', 'ban', 'remove-whitelist'].includes(action)) playerReasons.value[username] = ''
-    consoleLines.value.unshift({ at: new Date().toISOString(), command: `${action} ${username}`, output: result.output })
+    consoleLines.value.unshift({ id: ++consoleLineId, at: new Date().toISOString(), command: `${action} ${username}`, output: result.output })
     await loadAll(true)
     return true
   } catch (error) {
@@ -621,35 +631,17 @@ async function executeConsole() {
       method: 'POST',
       body: JSON.stringify({ command, confirm: consoleConfirm.value }),
     })
-    consoleLines.value.unshift({ at: new Date().toISOString(), command, output: result.output })
+    consoleLines.value.unshift({ id: ++consoleLineId, at: new Date().toISOString(), command, output: result.output })
     consoleCommand.value = ''
     consoleConfirm.value = ''
     notify('Command executed')
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Command failed'
-    consoleLines.value.unshift({ at: new Date().toISOString(), command, output: message, error: true })
+    consoleLines.value.unshift({ id: ++consoleLineId, at: new Date().toISOString(), command, output: message, error: true })
     notify(message, true)
   } finally {
     busy.value = ''
   }
-}
-
-function formatDuration(seconds: number): string {
-  if (seconds < 60) return `${seconds}s`
-  const hours = Math.floor(seconds / 3600)
-  const minutes = Math.floor((seconds % 3600) / 60)
-  if (!hours) return `${minutes}m`
-  return `${hours}h ${minutes}m`
-}
-
-function relativeTime(value?: string): string {
-  if (!value) return 'Never'
-  const seconds = Math.max(0, Math.round((Date.now() - Date.parse(value)) / 1000))
-  if (seconds < 10) return 'Just now'
-  if (seconds < 60) return `${seconds}s ago`
-  if (seconds < 3600) return `${Math.floor(seconds / 60)}m ago`
-  if (seconds < 86400) return `${Math.floor(seconds / 3600)}h ago`
-  return `${Math.floor(seconds / 86400)}d ago`
 }
 
 function liveSettingMeta(setting: LiveSettingState): string {
@@ -758,18 +750,32 @@ watch(page, (nextPage) => {
   if (nextPage === 'audit') void loadAll(true)
 })
 
+async function startSession() {
+  sessionError.value = ''
+  loading.value = true
+  try {
+    await loadSession()
+  } catch (error) {
+    // Without this the console would sit on the splash screen forever.
+    sessionError.value = error instanceof Error ? error.message : 'The dashboard could not be reached'
+    loading.value = false
+  }
+}
+
 onMounted(async () => {
   window.addEventListener('keydown', handleRequestDialogKeydown)
   try {
     setupStatus.value = await api<SetupStatus>('/api/setup/status')
     setupMode.value = setupMode.value || setupStatus.value.required
     if (setupMode.value) document.title = 'PZ RCON Admin // Secure Setup'
+  } catch {
+    // If the setup check fails the session check below reports the outage.
   } finally {
     setupChecking.value = false
   }
   if (setupMode.value) return
   if (!adminConsoleMode) return
-  await loadSession()
+  await startSession()
   refreshTimer = window.setInterval(() => {
     if (authenticated.value) void loadAll(true)
   }, 10_000)
@@ -795,6 +801,12 @@ onBeforeUnmount(() => {
   <div v-else-if="loading" class="splash">
     <div class="splash-mark">PZ</div>
     <p>Establishing secure console...</p>
+  </div>
+
+  <div v-else-if="sessionError" class="splash">
+    <div class="splash-mark">PZ</div>
+    <p>{{ sessionError }}</p>
+    <button class="button outline" type="button" @click="startSession">Try again</button>
   </div>
 
   <main v-else-if="!authenticated" class="login-shell" :data-player-theme="playerTheme">
@@ -1337,7 +1349,7 @@ onBeforeUnmount(() => {
             <div class="console-top"><span></span><span></span><span></span><strong>rcon@{{ overview.server.name.toLowerCase().replace(/\s+/g, '-') }}</strong><small>{{ modeLabel }}</small></div>
             <div class="console-output" aria-live="polite">
               <div v-if="!consoleLines.length" class="console-welcome"><strong>Project Zomboid Remote Console</strong><span>Enter <code>help</code> to inspect commands available in the running server build.</span></div>
-              <div v-for="(line, index) in consoleLines" :key="`${line.at}-${index}`" :class="['console-entry', { error: line.error }]">
+              <div v-for="line in consoleLines" :key="line.id" :class="['console-entry', { error: line.error }]">
                 <div><time>{{ new Date(line.at).toLocaleTimeString() }}</time><span>&gt;</span><code>{{ line.command }}</code></div>
                 <pre>{{ line.output }}</pre>
               </div>

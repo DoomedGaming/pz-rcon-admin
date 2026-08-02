@@ -1,6 +1,7 @@
-import { Writable } from 'node:stream'
+import type { Writable } from 'node:stream'
 import { Client, type AccessOptions } from 'basic-ftp'
 import { parseIni, parseSandboxLua } from './ini.js'
+import { LimitedTextSink } from './limited-text-sink.js'
 
 const MAX_CONFIG_BYTES = 1024 * 1024
 
@@ -37,23 +38,6 @@ interface FtpClient {
   access(options: AccessOptions): Promise<unknown>
   downloadTo(destination: Writable, remotePath: string): Promise<unknown>
   close(): void
-}
-
-class LimitedTextSink extends Writable {
-  private readonly chunks: Buffer[] = []
-  private size = 0
-
-  override _write(chunk: Buffer | string, encoding: BufferEncoding, callback: (error?: Error | null) => void) {
-    const bytes = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk, encoding)
-    this.size += bytes.length
-    if (this.size > MAX_CONFIG_BYTES) return callback(new Error('Server configuration file exceeds 1 MiB'))
-    this.chunks.push(bytes)
-    callback()
-  }
-
-  text() {
-    return Buffer.concat(this.chunks).toString('utf8')
-  }
 }
 
 function errorMessage(error: unknown): string {
@@ -93,7 +77,7 @@ export class ServerConfigFtpBridge {
   }
 
   private async download(client: FtpClient, remotePath: string): Promise<string> {
-    const sink = new LimitedTextSink()
+    const sink = new LimitedTextSink(MAX_CONFIG_BYTES, 'Server configuration file exceeds 1 MiB')
     await client.downloadTo(sink, remotePath)
     return sink.text()
   }
@@ -117,6 +101,8 @@ export class ServerConfigFtpBridge {
       const update: ServerConfigFtpUpdate = {}
       const errors: string[] = []
       let downloaded = 0
+      let nextConfigSnapshot: string | undefined
+      let nextSandboxSnapshot: string | undefined
 
       if (this.config.configPath) {
         try {
@@ -126,7 +112,7 @@ export class ServerConfigFtpBridge {
           this.state.configLoaded = true
           downloaded += 1
           if (text !== this.configSnapshot) {
-            this.configSnapshot = text
+            nextConfigSnapshot = text
             update.configValues = values
           }
         } catch (error) {
@@ -141,7 +127,7 @@ export class ServerConfigFtpBridge {
           this.state.sandboxLoaded = true
           downloaded += 1
           if (text !== this.sandboxSnapshot) {
-            this.sandboxSnapshot = text
+            nextSandboxSnapshot = text
             update.sandboxText = text
           }
         } catch (error) {
@@ -150,7 +136,11 @@ export class ServerConfigFtpBridge {
       }
 
       if (Object.keys(update).length) {
+        // Commit snapshots only after a successful import so a failed import
+        // is retried on the next poll instead of being skipped as unchanged.
         await this.importUpdate(update)
+        if (nextConfigSnapshot !== undefined) this.configSnapshot = nextConfigSnapshot
+        if (nextSandboxSnapshot !== undefined) this.sandboxSnapshot = nextSandboxSnapshot
         this.state.lastSyncAt = new Date().toISOString()
       }
       this.state.connected = downloaded > 0

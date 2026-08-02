@@ -14,7 +14,7 @@ describe('administrator audit boundary', () => {
   })
 
   it('requires administrator access for full and recent audit data', () => {
-    const server = read('src/server/index.ts')
+    const server = read('src/server/app.ts')
 
     expect(server).toContain("recentAudit: requestDashboardIdentity(request).role === 'admin' ? store.getAudit(8) : []")
     expect(server).toContain("app.get('/api/audit', requireDashboardRole('admin')")

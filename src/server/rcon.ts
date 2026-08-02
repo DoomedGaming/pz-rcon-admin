@@ -74,12 +74,7 @@ export class PzRconService {
 
     let client: Rcon | undefined
     try {
-      client = await Rcon.connect({
-        host: this.settings.host,
-        port: this.settings.port,
-        password: this.settings.password,
-        timeout: 5000,
-      })
+      client = await this.connect()
       this.state.connected = true
       this.state.lastConnectedAt = new Date().toISOString()
       this.state.lastError = undefined
@@ -90,6 +85,38 @@ export class PzRconService {
       throw error
     } finally {
       await client?.end().catch(() => undefined)
+    }
+  }
+
+  private async connect(): Promise<Rcon> {
+    const client = new Rcon({
+      host: this.settings.host,
+      port: this.settings.port,
+      password: this.settings.password,
+      timeout: 5000,
+    })
+    // rcon-client re-emits socket errors on an EventEmitter; without a
+    // listener, a reset between connect and end crashes the process.
+    client.on('error', (error) => {
+      this.state.lastError = error instanceof Error ? error.message : 'Unknown RCON error'
+    })
+    // The library's timeout option only covers packet responses, not the TCP
+    // connect, which can otherwise stall the command queue for minutes.
+    let timer: NodeJS.Timeout | undefined
+    const connecting = client.connect()
+    try {
+      await Promise.race([
+        connecting,
+        new Promise<never>((_, reject) => {
+          timer = setTimeout(() => reject(new Error('RCON connection timed out after 5 seconds')), 5000)
+        }),
+      ])
+      return client
+    } catch (error) {
+      connecting.then(() => client.end()).catch(() => undefined)
+      throw error
+    } finally {
+      clearTimeout(timer)
     }
   }
 

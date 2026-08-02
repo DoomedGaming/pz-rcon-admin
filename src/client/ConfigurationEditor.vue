@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
-import type { SetupStatus } from '@shared/types'
+import { onBeforeUnmount, onMounted, ref } from 'vue'
 import { STAFF_CONSOLE_PATH } from '@shared/routes'
 import { DEFAULT_TELEMETRY_REMOTE_PATH, normalizeTelemetryRemotePath } from '@shared/telemetry-path'
+import { waitForDashboardRestart } from './helpers'
 
 type SecretKey =
   | 'DASHBOARD_PASSWORD'
@@ -149,23 +149,17 @@ async function load() {
   }
 }
 
+let unmounted = false
+onBeforeUnmount(() => { unmounted = true })
+
 async function waitForRestart() {
-  await new Promise((resolve) => window.setTimeout(resolve, 1_500))
-  for (let attempt = 0; attempt < 40; attempt += 1) {
-    try {
-      const response = await fetch('/api/setup/status', { cache: 'no-store' })
-      const status = await response.json() as SetupStatus
-      if (response.ok && status.configured && !status.restartRequired) {
-        restartMessage.value = 'Dashboard restarted with the updated configuration. Reconnecting…'
-        window.location.assign(STAFF_CONSOLE_PATH)
-        return
-      }
-    } catch {
-      // The dashboard is expected to be briefly unreachable during restart.
-    }
-    await new Promise((resolve) => window.setTimeout(resolve, 1_500))
+  const outcome = await waitForDashboardRestart(() => unmounted)
+  if (outcome === 'restarted') {
+    restartMessage.value = 'Dashboard restarted with the updated configuration. Reconnecting…'
+    window.location.assign(STAFF_CONSOLE_PATH)
+  } else if (outcome === 'timeout') {
+    restartMessage.value = `The encrypted update is saved, but the service did not return. Restart the container or service manually, then reopen ${STAFF_CONSOLE_PATH}.`
   }
-  restartMessage.value = `The encrypted update is saved, but the service did not return. Restart the container or service manually, then reopen ${STAFF_CONSOLE_PATH}.`
 }
 
 async function save() {

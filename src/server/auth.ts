@@ -1,5 +1,5 @@
 import { createHash, createHmac, timingSafeEqual } from 'node:crypto'
-import type { NextFunction, Request, Response } from 'express'
+import type { Request, Response } from 'express'
 
 const COOKIE_NAME = 'pz_admin_session'
 const PLAYER_COOKIE_NAME = 'pz_player_session'
@@ -9,15 +9,20 @@ function digest(value: string): Buffer {
   return createHash('sha256').update(value).digest()
 }
 
-function safeEqual(left: string, right: string): boolean {
+export function safeEqual(left: string, right: string): boolean {
   return timingSafeEqual(digest(left), digest(right))
 }
 
 function parseCookies(header?: string): Record<string, string> {
   if (!header) return {}
-  return Object.fromEntries(header.split(';').map((part) => {
+  return Object.fromEntries(header.split(';').flatMap((part) => {
     const separator = part.indexOf('=')
-    return [part.slice(0, separator).trim(), decodeURIComponent(part.slice(separator + 1))]
+    if (separator < 1) return []
+    try {
+      return [[part.slice(0, separator).trim(), decodeURIComponent(part.slice(separator + 1))]]
+    } catch {
+      return []
+    }
   }).filter(([key]) => key))
 }
 
@@ -51,10 +56,6 @@ export function createAuth(password: string, secret: string, secure: boolean) {
     },
     logout(response: Response) {
       appendCookie(response, `${COOKIE_NAME}=; HttpOnly; SameSite=Strict; Path=/; Max-Age=0${secure ? '; Secure' : ''}`)
-    },
-    middleware(request: Request, response: Response, next: NextFunction) {
-      if (authenticated(request)) return next()
-      response.status(401).json({ error: 'Authentication required' })
     },
   }
 }

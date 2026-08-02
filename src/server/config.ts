@@ -20,6 +20,7 @@ const configPath = process.env.PZ_CONFIG_PATH
 const ini = configPath && existsSync(configPath) ? readIni(configPath) : {}
 const configSummary = summarizeConfig(ini)
 const int = (value: string | undefined, fallback: number) => {
+  if (value === undefined || value === '') return fallback
   const parsed = Number(value)
   return Number.isInteger(parsed) ? parsed : fallback
 }
@@ -41,11 +42,9 @@ export const appConfig = {
   secureConfig,
   dashboardPassword,
   sessionSecret: dashboardSessionSecret,
-  playerSessionSecret: process.env.PZ_PLAYER_SESSION_SECRET
-    || dashboardSessionSecret
-    || process.env.PZ_TELEMETRY_FTP_PASSWORD
-    || 'local-development-only',
+  playerSessionSecret: process.env.PZ_PLAYER_SESSION_SECRET || dashboardSessionSecret,
   secureCookie: process.env.DASHBOARD_SECURE_COOKIE === 'true',
+  trustProxy: process.env.DASHBOARD_TRUST_PROXY?.trim() || '',
   rcon: {
     host: process.env.PZ_RCON_HOST || '',
     port: int(process.env.PZ_RCON_PORT || ini.RCONPort, 0),

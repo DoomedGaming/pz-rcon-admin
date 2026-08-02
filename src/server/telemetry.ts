@@ -1,5 +1,6 @@
-import { Writable } from 'node:stream'
+import type { Writable } from 'node:stream'
 import { Client, type AccessOptions } from 'basic-ftp'
+import { LimitedTextSink } from './limited-text-sink.js'
 import type { PlayerTelemetry } from '../shared/types.js'
 
 const MAX_SNAPSHOT_BYTES = 512 * 1024
@@ -192,28 +193,11 @@ export function parseTelemetrySnapshot(text: string): TelemetrySnapshot {
   }
 }
 
-function timestampToIso(timestamp: number): string {
+function timestampToDate(timestamp: number): Date {
   const milliseconds = timestamp > 10_000_000_000 ? timestamp : timestamp * 1000
   const date = new Date(milliseconds)
   if (!Number.isFinite(date.getTime())) throw new Error('generatedAt is outside the supported date range')
-  return date.toISOString()
-}
-
-class LimitedTextSink extends Writable {
-  private readonly chunks: Buffer[] = []
-  private size = 0
-
-  override _write(chunk: Buffer | string, encoding: BufferEncoding, callback: (error?: Error | null) => void) {
-    const bytes = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk, encoding)
-    this.size += bytes.length
-    if (this.size > MAX_SNAPSHOT_BYTES) return callback(new Error('Telemetry snapshot exceeds 512 KiB'))
-    this.chunks.push(bytes)
-    callback()
-  }
-
-  text() {
-    return Buffer.concat(this.chunks).toString('utf8')
-  }
+  return date
 }
 
 export class TelemetryFtpBridge {
@@ -256,17 +240,17 @@ export class TelemetryFtpBridge {
         password: this.config.password,
         secure: this.config.secure,
       })
-      const sink = new LimitedTextSink()
+      const sink = new LimitedTextSink(MAX_SNAPSHOT_BYTES, 'Telemetry snapshot exceeds 512 KiB')
       await client.downloadTo(sink, this.config.remotePath)
       const snapshot = parseTelemetrySnapshot(sink.text())
       this.state.serverVersion = snapshot.serverVersion
       const snapshotKey = `${snapshot.generatedAt}:${snapshot.players.length}`
       if (snapshotKey !== this.lastSnapshotKey) {
-        const observedAt = new Date(snapshot.generatedAt > 10_000_000_000 ? snapshot.generatedAt : snapshot.generatedAt * 1000)
+        const observedAt = timestampToDate(snapshot.generatedAt)
         await this.importSnapshot(snapshot, observedAt)
         this.lastSnapshotKey = snapshotKey
         this.state.lastSyncAt = new Date().toISOString()
-        this.state.lastSnapshotAt = timestampToIso(snapshot.generatedAt)
+        this.state.lastSnapshotAt = observedAt.toISOString()
         this.state.playerCount = snapshot.players.length
       }
       this.state.connected = true

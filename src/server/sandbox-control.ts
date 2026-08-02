@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto'
-import { Readable, Writable } from 'node:stream'
+import { Readable, type Writable } from 'node:stream'
 import { Client, type AccessOptions } from 'basic-ftp'
+import { LimitedTextSink } from './limited-text-sink.js'
 import type { SandboxSettingState } from '../shared/types.js'
 
 const MAX_STATUS_BYTES = 64 * 1024
@@ -23,23 +24,6 @@ interface FtpClient {
   uploadFrom(source: Readable, remotePath: string): Promise<unknown>
   downloadTo(destination: Writable, remotePath: string): Promise<unknown>
   close(): void
-}
-
-class LimitedTextSink extends Writable {
-  private readonly chunks: Buffer[] = []
-  private size = 0
-
-  override _write(chunk: Buffer | string, encoding: BufferEncoding, callback: (error?: Error | null) => void) {
-    const bytes = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk, encoding)
-    this.size += bytes.length
-    if (this.size > MAX_STATUS_BYTES) return callback(new Error('Sandbox control status exceeds 64 KiB'))
-    this.chunks.push(bytes)
-    callback()
-  }
-
-  text() {
-    return Buffer.concat(this.chunks).toString('utf8')
-  }
 }
 
 function companionPath(telemetryPath: string, file: string): string {
@@ -151,7 +135,7 @@ export class SandboxControlBridge {
         await delay(pollMs)
         let statusText: string
         try {
-          const sink = new LimitedTextSink()
+          const sink = new LimitedTextSink(MAX_STATUS_BYTES, 'Sandbox control status exceeds 64 KiB')
           await client.downloadTo(sink, this.statusPath)
           statusText = sink.text()
         } catch {

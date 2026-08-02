@@ -2,6 +2,7 @@
 import { ref } from 'vue'
 import type { SetupStatus } from '@shared/types'
 import { DEFAULT_TELEMETRY_REMOTE_PATH } from '@shared/telemetry-path'
+import { waitForDashboardRestart } from './helpers'
 
 defineProps<{ status: SetupStatus }>()
 
@@ -64,22 +65,13 @@ const error = ref('')
 const restartMessage = ref('Waiting for the dashboard service to restart…')
 
 async function waitForRestart() {
-  await new Promise((resolve) => window.setTimeout(resolve, 1_500))
-  for (let attempt = 0; attempt < 40; attempt += 1) {
-    try {
-      const response = await fetch('/api/setup/status', { cache: 'no-store' })
-      const nextStatus = await response.json() as SetupStatus
-      if (response.ok && nextStatus.configured && !nextStatus.restartRequired) {
-        restartMessage.value = 'Dashboard restarted. Opening the admin console…'
-        window.location.assign('/admin')
-        return
-      }
-    } catch {
-      // A connection failure is expected while the container is restarting.
-    }
-    await new Promise((resolve) => window.setTimeout(resolve, 1_500))
+  const outcome = await waitForDashboardRestart()
+  if (outcome === 'restarted') {
+    restartMessage.value = 'Dashboard restarted. Opening the admin console…'
+    window.location.assign('/admin')
+  } else if (outcome === 'timeout') {
+    restartMessage.value = 'The configuration is saved, but the service did not return automatically. Restart the container or service, then open /admin.'
   }
-  restartMessage.value = 'The configuration is saved, but the service did not return automatically. Restart the container or service, then open /admin.'
 }
 
 async function save() {

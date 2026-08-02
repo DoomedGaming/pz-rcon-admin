@@ -81,7 +81,8 @@ export function buildDefinedCommand(id: string, args: Record<string, unknown> = 
   for (const argument of definition.args ?? []) {
     const value = clean(args[argument.name])
     if (argument.required && !value) throw new Error(`${argument.label} is required`)
-    command = command.replace(`{{${argument.name}}}`, quote(value))
+    // A function replacement keeps $-sequences in user input literal.
+    command = command.replace(`{{${argument.name}}}`, () => quote(value))
   }
   return { definition, command }
 }

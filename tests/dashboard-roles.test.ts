@@ -1,10 +1,34 @@
-import { mkdtemp, rm } from 'node:fs/promises'
+import { mkdtemp, readdir, readFile, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { DashboardStore } from '../src/server/store.js'
 
 describe('dashboard roles', () => {
+  it('preserves each unreadable data file under a unique recovery name', async () => {
+    const directory = await mkdtemp(join(tmpdir(), 'pz-dashboard-corruption-test-'))
+    const path = join(directory, 'dashboard.json')
+    const previousBackup = `${path}.corrupted-existing`
+    const warning = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    try {
+      await writeFile(previousBackup, 'older recovery copy')
+      await writeFile(path, '{not valid json')
+
+      new DashboardStore(path)
+
+      const recoveryFiles = (await readdir(directory)).filter((entry) => entry.startsWith('dashboard.json.corrupted-'))
+      expect(recoveryFiles).toHaveLength(2)
+      expect(await readFile(previousBackup, 'utf8')).toBe('older recovery copy')
+      const latestBackup = recoveryFiles.find((entry) => entry !== 'dashboard.json.corrupted-existing')
+      expect(latestBackup).toBeDefined()
+      expect(await readFile(join(directory, latestBackup!), 'utf8')).toBe('{not valid json')
+      expect(warning).toHaveBeenCalledWith(expect.stringContaining('could not be read; the file was moved to'))
+    } finally {
+      warning.mockRestore()
+      await rm(directory, { recursive: true, force: true })
+    }
+  })
+
   it('defaults every known survivor to User and persists explicit role changes', async () => {
     const directory = await mkdtemp(join(tmpdir(), 'pz-dashboard-role-test-'))
     const path = join(directory, 'dashboard.json')

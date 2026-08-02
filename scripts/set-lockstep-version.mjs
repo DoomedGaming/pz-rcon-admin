@@ -47,11 +47,15 @@ writeJson(telemetryReleasePath, telemetryRelease)
 
 const modInfoPath = resolve(telemetryRoot, 'workshop/Contents/mods/PZRconAdminTelemetry/42/mod.info')
 const workshopInfoPath = resolve(telemetryRoot, 'workshop/workshop.txt')
-const modInfo = readFileSync(modInfoPath, 'utf8').replace(/^modversion=.*$/m, `modversion=${version}`)
-const workshopInfo = readFileSync(workshopInfoPath, 'utf8').replace(/Release \d+\.\d+\.\d+\./, `Release ${version}.`)
 
-writeFileSync(modInfoPath, modInfo)
-writeFileSync(workshopInfoPath, workshopInfo)
+function replaceRequired(path, pattern, replacement) {
+  const source = readFileSync(path, 'utf8')
+  if (!pattern.test(source)) throw new Error(`${path} does not contain the expected ${pattern} marker`)
+  return source.replace(pattern, replacement)
+}
+
+writeFileSync(modInfoPath, replaceRequired(modInfoPath, /^modversion=.*$/m, `modversion=${version}`))
+writeFileSync(workshopInfoPath, replaceRequired(workshopInfoPath, /Release \d+\.\d+\.\d+\./, `Release ${version}.`))
 
 for (const sitePath of [resolve(appRoot, 'site/index.html'), resolve(appRoot, 'site/docs/index.html')]) {
   if (!existsSync(sitePath)) continue

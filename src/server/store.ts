@@ -63,6 +63,15 @@ export class DashboardStore {
         supportRequests: parsed.supportRequests ?? {},
       }
     } catch {
+      // Keep the unreadable file for manual recovery; the next save would
+      // otherwise overwrite the only copy of the dashboard history.
+      const backup = `${this.path}.corrupted-${Date.now()}-${randomUUID()}`
+      try {
+        renameSync(this.path, backup)
+        console.warn(`Dashboard data at ${this.path} could not be read; the file was moved to ${backup} and a fresh state was started.`)
+      } catch {
+        console.warn(`Dashboard data at ${this.path} could not be read; starting with a fresh state.`)
+      }
       return emptyState()
     }
   }
