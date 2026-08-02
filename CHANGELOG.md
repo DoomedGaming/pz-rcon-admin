@@ -8,6 +8,13 @@ This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.8.3] - 2026-08-02
+
+### Fixed
+
+- Bounded graceful RCON disconnects and force-closed stalled sockets so a half-closed server connection cannot block later dashboard polls.
+- Destroyed sockets whose initial connection exceeds the deadline instead of leaving detached connection attempts behind.
+
 ## [0.8.2] - 2026-08-01
 
 ### Added
@@ -184,7 +191,9 @@ This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 - Corrected the GitHub Container Registry workflow's image build platform.
 
-[Unreleased]: https://github.com/DoomedGaming/pz-rcon-admin/compare/v0.8.1...HEAD
+[Unreleased]: https://github.com/DoomedGaming/pz-rcon-admin/compare/v0.8.3...HEAD
+[0.8.3]: https://github.com/DoomedGaming/pz-rcon-admin/compare/v0.8.2...v0.8.3
+[0.8.2]: https://github.com/DoomedGaming/pz-rcon-admin/compare/v0.8.1...v0.8.2
 [0.8.1]: https://github.com/DoomedGaming/pz-rcon-admin/compare/v0.8.0...v0.8.1
 [0.8.0]: https://github.com/DoomedGaming/pz-rcon-admin/compare/v0.7.5...v0.8.0
 [0.7.5]: https://github.com/DoomedGaming/pz-rcon-admin/compare/v0.7.4...v0.7.5

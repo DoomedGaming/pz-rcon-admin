@@ -1,6 +1,11 @@
 import { Rcon } from 'rcon-client'
 import type { ConnectionMode } from '../shared/types.js'
 
+const RCON_CONNECT_TIMEOUT_MS = 5_000
+const RCON_CLOSE_TIMEOUT_MS = 1_000
+
+type RconClientFactory = (options: ConstructorParameters<typeof Rcon>[0]) => Rcon
+
 export interface RconSettings {
   host: string
   port: number
@@ -39,7 +44,10 @@ export class PzRconService {
   private queue: Promise<unknown> = Promise.resolve()
   private demoPlayers = ['MuldraughMedic', 'LastCanOpener']
 
-  constructor(private readonly settings: RconSettings) {
+  constructor(
+    private readonly settings: RconSettings,
+    private readonly createClient: RconClientFactory = (options) => new Rcon(options),
+  ) {
     const configured = Boolean(settings.host && settings.port && settings.password)
     this.state = {
       mode: settings.demo ? 'demo' : configured ? 'live' : 'offline',
@@ -84,16 +92,16 @@ export class PzRconService {
       this.state.lastError = error instanceof Error ? error.message : 'Unknown RCON error'
       throw error
     } finally {
-      await client?.end().catch(() => undefined)
+      if (client) await this.close(client)
     }
   }
 
   private async connect(): Promise<Rcon> {
-    const client = new Rcon({
+    const client = this.createClient({
       host: this.settings.host,
       port: this.settings.port,
       password: this.settings.password,
-      timeout: 5000,
+      timeout: RCON_CONNECT_TIMEOUT_MS,
     })
     // rcon-client re-emits socket errors on an EventEmitter; without a
     // listener, a reset between connect and end crashes the process.
@@ -108,13 +116,37 @@ export class PzRconService {
       await Promise.race([
         connecting,
         new Promise<never>((_, reject) => {
-          timer = setTimeout(() => reject(new Error('RCON connection timed out after 5 seconds')), 5000)
+          timer = setTimeout(
+            () => reject(new Error('RCON connection timed out after 5 seconds')),
+            RCON_CONNECT_TIMEOUT_MS,
+          )
         }),
       ])
       return client
     } catch (error) {
-      connecting.then(() => client.end()).catch(() => undefined)
+      await this.close(client)
       throw error
+    } finally {
+      clearTimeout(timer)
+    }
+  }
+
+  private async close(client: Rcon): Promise<void> {
+    // rcon-client waits indefinitely for the peer's final close after socket.end().
+    // Bound that grace period so a half-closed PZ socket cannot pin the command queue.
+    let timer: NodeJS.Timeout | undefined
+    try {
+      await Promise.race([
+        client.end(),
+        new Promise<void>((resolve) => {
+          timer = setTimeout(() => {
+            client.socket?.destroy()
+            resolve()
+          }, RCON_CLOSE_TIMEOUT_MS)
+        }),
+      ])
+    } catch {
+      client.socket?.destroy()
     } finally {
       clearTimeout(timer)
     }
